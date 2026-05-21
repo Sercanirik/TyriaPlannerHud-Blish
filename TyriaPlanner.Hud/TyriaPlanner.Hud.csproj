@@ -43,4 +43,15 @@
        (renamed zip) at bin/Release/<AssemblyName>.bhm after each Release
        build, so no custom packaging step is needed. -->
 
+  <!-- Mirror the freshly built .bhm into ../releases so the user has a
+       stable, shallow path to grab the latest build from (drag-drop into
+       %userprofile%\Documents\Guild Wars 2\addons\blishhud\modules\). Only
+       fires for Release builds · Debug builds leave it alone. -->
+  <Target Name="CopyToReleases" AfterTargets="BuildBlishHUDModule" Condition="'$(Configuration)' == 'Release'">
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).bhm"
+          DestinationFolder="$(MSBuildProjectDirectory)\..\releases\"
+          ContinueOnError="true"
+          SkipUnchangedFiles="false" />
+  </Target>
+
 </Project>

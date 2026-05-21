@@ -149,23 +149,15 @@ namespace TyriaPlanner.Hud.Ui
             var btn = new StandardButton
             {
                 Parent = this,
-                Text = "/whisper",
+                Text = "Copy name",
                 Location = new Point(x, y),
                 Width = width,
                 Height = 26,
             };
-            btn.Click += async (_, __) =>
+            btn.Click += (_, __) =>
             {
-                btn.Enabled = false;
-                try { await WhisperOpener.OpenAsync(accountName); }
-                finally
-                {
-                    GameService.Overlay.QueueMainThreadUpdate(_2 =>
-                    {
-                        try { btn.Enabled = true; } catch { }
-                    });
-                    FlashCopied(btn, "/whisper");
-                }
+                try { Clipboard.Set(accountName); } catch { }
+                FlashCopied(btn, "Copy name");
             };
             x += width + 6;
         }

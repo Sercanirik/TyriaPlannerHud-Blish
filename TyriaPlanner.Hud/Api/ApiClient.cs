@@ -134,9 +134,9 @@ namespace TyriaPlanner.Hud.Api
                 }
             }
         }
-        public async Task<bool> DecideApprovalAsync(string baseUrl, string bearer, string signupId, string decision, CancellationToken cancel)
+        public async Task<(bool ok, int status)> DecideApprovalAsync(string baseUrl, string bearer, string signupId, string decision, CancellationToken cancel)
         {
-            if (string.IsNullOrWhiteSpace(bearer) || string.IsNullOrWhiteSpace(signupId)) return false;
+            if (string.IsNullOrWhiteSpace(bearer) || string.IsNullOrWhiteSpace(signupId)) return (false, 0);
             var body = JsonConvert.SerializeObject(new { decision });
             var url = baseUrl.TrimEnd('/') + "/api/addon/approvals/" + signupId + "/decide";
             try
@@ -147,21 +147,22 @@ namespace TyriaPlanner.Hud.Api
                     req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
                     using (var res = await _http.SendAsync(req, cancel).ConfigureAwait(false))
                     {
+                        int code = (int)res.StatusCode;
                         if (!res.IsSuccessStatusCode)
                         {
                             var errBody = string.Empty;
                             try { errBody = await res.Content.ReadAsStringAsync().ConfigureAwait(false); } catch { }
-                            Logger.Warn("decide failed Â· {0} {1} Â· {2}", (int)res.StatusCode, res.ReasonPhrase, errBody);
-                            return false;
+                            Logger.Warn("decide failed Â· {0} {1} Â· {2}", code, res.ReasonPhrase, errBody);
+                            return (false, code);
                         }
-                        return true;
+                        return (true, code);
                     }
                 }
             }
             catch (Exception ex)
             {
                 Logger.Warn(ex, "decide threw for {0}", signupId);
-                return false;
+                return (false, 0);
             }
         }
         public void Dispose()

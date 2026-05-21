@@ -358,7 +358,19 @@ namespace TyriaPlanner.Hud.Ui
             btn.Enabled = false;
             var baseUrl = _settings.ApiBaseUrl.Value;
             var bearer  = _settings.CachedBearer.Value;
-            bool ok = await _api.DecideApprovalAsync(baseUrl, bearer, signupId, decision, CancellationToken.None).ConfigureAwait(false);
+            var result = await _api.DecideApprovalAsync(baseUrl, bearer, signupId, decision, CancellationToken.None).ConfigureAwait(false);
+            if (!result.ok && (result.status == 401 || result.status == 403)
+                && !string.IsNullOrWhiteSpace(_settings.Gw2ApiKey.Value))
+            {
+                _settings.CachedBearer.Value = string.Empty;
+                var fresh = await _api.ExchangeAsync(baseUrl, _settings.Gw2ApiKey.Value, CancellationToken.None).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(fresh))
+                {
+                    _settings.CachedBearer.Value = fresh;
+                    result = await _api.DecideApprovalAsync(baseUrl, fresh, signupId, decision, CancellationToken.None).ConfigureAwait(false);
+                }
+            }
+            bool ok = result.ok;
             GameService.Overlay.QueueMainThreadUpdate(_ =>
             {
                 try { btn.Text = ok ? "âœ“" : "failed"; } catch { }
@@ -659,26 +671,15 @@ namespace TyriaPlanner.Hud.Ui
             var btn = new StandardButton
             {
                 Parent = parent,
-                Text = "/whisper",
+                Text = "Copy name",
                 Width = width,
                 Height = 26,
                 Location = new Point(x, y),
             };
-            btn.Click += async (_, __) =>
+            btn.Click += (_, __) =>
             {
-                btn.Enabled = false;
-                try
-                {
-                    await WhisperOpener.OpenAsync(accountName);
-                }
-                finally
-                {
-                    GameService.Overlay.QueueMainThreadUpdate(_2 =>
-                    {
-                        try { btn.Enabled = true; } catch { }
-                    });
-                    FlashCopied(btn, "/whisper");
-                }
+                try { Clipboard.Set(accountName); } catch { }
+                FlashCopied(btn, "Copy name");
             };
             x += width + 6;
         }
