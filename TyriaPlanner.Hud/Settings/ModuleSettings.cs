@@ -17,6 +17,13 @@ namespace TyriaPlanner.Hud.Settings
         TopRight,
         BottomRight,
     }
+    public enum ColorThemePreference
+    {
+        Default,
+        HighContrast,
+        Pastel,
+        Monochrome,
+    }
     public sealed class ModuleSettings
     {
         public SettingEntry<string> ApiBaseUrl { get; }
@@ -29,6 +36,8 @@ namespace TyriaPlanner.Hud.Settings
         public SettingEntry<ToastPositionPreference> ToastPosition { get; }
         public SettingEntry<bool> PlaySoundOnToast { get; }
         public SettingEntry<bool> NotifyWeeklyReset { get; }
+        public SettingEntry<bool> PauseInCombat { get; }
+        public SettingEntry<ColorThemePreference> ColorTheme { get; }
         public ModuleSettings(SettingCollection root)
         {
             ApiBaseUrl = root.DefineSetting(
@@ -81,7 +90,17 @@ namespace TyriaPlanner.Hud.Settings
                 "NotifyWeeklyReset",
                 true,
                 () => "Weekly raid reset reminder",
-                () => "One toast on Thursday 19:30 UTC reminding you the raid week reset (refresh your kill-proofs).");
+                () => "One toast on Monday 07:30 UTC reminding you the raid week reset (refresh your kill-proofs).");
+            PauseInCombat = root.DefineSetting(
+                "PauseInCombat",
+                false,
+                () => "Hold notifications in combat",
+                () => "Defers toasts while you're in combat (Mumble flag). They fire as soon as combat ends so you don't lose them.");
+            ColorTheme = root.DefineSetting(
+                "ColorTheme",
+                ColorThemePreference.Default,
+                () => "Color theme",
+                () => "Recolours the per-type accent (raid/strike/fractal/wvw/open-world) in menu rows and toasts.");
         }
         public BitmapFont TitleFont()
         {

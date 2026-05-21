@@ -226,7 +226,9 @@ namespace TyriaPlanner.Hud.Ui
                     _statusLabel.Text = "Failed to load. Check your API key or network.";
                     return;
                 }
-                GameService.Overlay.QueueMainThreadUpdate(_ => Populate(resp));
+                PendingApprovalsResponse approvals = null;
+                try { approvals = await _api.FetchApprovalsAsync(baseUrl, bearer, cancel).ConfigureAwait(false); } catch { }
+                GameService.Overlay.QueueMainThreadUpdate(_ => Populate(resp, approvals));
             }
             catch (TaskCanceledException) {  }
             catch (Exception ex)
@@ -239,9 +241,17 @@ namespace TyriaPlanner.Hud.Ui
                 _refreshButton.Enabled = true;
             }
         }
-        private void Populate(UpcomingResponse resp)
+        private void Populate(UpcomingResponse resp, PendingApprovalsResponse approvals = null)
         {
             _content.ClearChildren();
+            if (approvals?.Pending != null && approvals.Pending.Length > 0)
+            {
+                AddSectionHeader($"Pending approvals Â· {approvals.Pending.Length}");
+                foreach (var p in approvals.Pending)
+                {
+                    AddApprovalRow(p);
+                }
+            }
             AddSectionHeader($"My signups (next 7 days)  Â·  {resp.MySignups?.Length ?? 0}");
             if (resp.MySignups == null || resp.MySignups.Length == 0)
             {
@@ -277,9 +287,99 @@ namespace TyriaPlanner.Hud.Ui
             }
             _statusLabel.Text = $"Updated Â· server time {resp.ServerTime:HH:mm:ss}";
         }
+        private void AddApprovalRow(PendingApproval p)
+        {
+            var typeColor = EventColors.For(p.EventType, _settings.ColorTheme.Value);
+            var titleFont = _settings.TitleFont();
+            var bodyFont  = _settings.BodyFont();
+            var row = new Panel
+            {
+                Parent = _content,
+                Width = _content.Width - 16,
+                Height = (int)titleFont.LineHeight + (int)bodyFont.LineHeight + 56,
+                BackgroundColor = new Color(24, 24, 30, 220),
+            };
+            new Panel
+            {
+                Parent = row,
+                BackgroundColor = typeColor,
+                Location = new Point(0, 0),
+                Width = 4,
+                Height = row.Height,
+            };
+            new Label
+            {
+                Parent = row,
+                Text = $"{p.EventTitle} Â· {PrettyType(p.EventType)}",
+                Font = titleFont,
+                TextColor = typeColor,
+                Location = new Point(12, 6),
+                Width = row.Width - 22,
+                Height = (int)titleFont.LineHeight + 2,
+                AutoSizeWidth = false,
+            };
+            var spec = !string.IsNullOrWhiteSpace(p.CharacterEliteSpec) ? p.CharacterEliteSpec : p.CharacterProfession;
+            var applicant = !string.IsNullOrWhiteSpace(p.ApplicantAccountName)
+                ? p.ApplicantAccountName
+                : (p.ApplicantDisplayName ?? p.ApplicantUsername ?? "?");
+            new Label
+            {
+                Parent = row,
+                Text = $"{applicant} Â· {p.CharacterName} ({spec}) Â· {p.GuildName}",
+                Font = bodyFont,
+                TextColor = new Color(210, 210, 210),
+                Location = new Point(12, 10 + (int)titleFont.LineHeight),
+                Width = row.Width - 22,
+                Height = (int)bodyFont.LineHeight + 2,
+                AutoSizeWidth = false,
+            };
+            var btnY = row.Height - 32;
+            var approve = new StandardButton
+            {
+                Parent = row,
+                Text = "Approve",
+                Width = 90,
+                Height = 26,
+                Location = new Point(12, btnY),
+            };
+            approve.Click += (_, __) => _ = DecideAsync(p.SignupId, "approved", approve);
+            var reject = new StandardButton
+            {
+                Parent = row,
+                Text = "Reject",
+                Width = 80,
+                Height = 26,
+                Location = new Point(108, btnY),
+            };
+            reject.Click += (_, __) => _ = DecideAsync(p.SignupId, "rejected", reject);
+        }
+        private async Task DecideAsync(string signupId, string decision, StandardButton btn)
+        {
+            btn.Enabled = false;
+            var baseUrl = _settings.ApiBaseUrl.Value;
+            var bearer  = _settings.CachedBearer.Value;
+            bool ok = await _api.DecideApprovalAsync(baseUrl, bearer, signupId, decision, CancellationToken.None).ConfigureAwait(false);
+            GameService.Overlay.QueueMainThreadUpdate(_ =>
+            {
+                try { btn.Text = ok ? "âœ“" : "failed"; } catch { }
+            });
+            if (ok)
+            {
+                await Task.Delay(700).ConfigureAwait(false);
+                GameService.Overlay.QueueMainThreadUpdate(gt => { var _t = RefreshAsync(); });
+            }
+            else
+            {
+                await Task.Delay(1500).ConfigureAwait(false);
+                GameService.Overlay.QueueMainThreadUpdate(_ =>
+                {
+                    try { btn.Enabled = true; btn.Text = decision == "approved" ? "Approve" : "Reject"; } catch { }
+                });
+            }
+        }
         private void AddHistoryRow(HistoryEntry entry)
         {
-            var typeColor = EventColors.For(entry.EventType);
+            var typeColor = EventColors.For(entry.EventType, _settings.ColorTheme.Value);
             var bodyFont = _settings.BodyFont();
             var titleFont = _settings.TitleFont();
             var row = new Panel
@@ -359,7 +459,7 @@ namespace TyriaPlanner.Hud.Ui
         }
         private void AddEventRow(EventBase ev, bool showSqjoin)
         {
-            var typeColor = EventColors.For(ev.Type);
+            var typeColor = EventColors.For(ev.Type, _settings.ColorTheme.Value);
             var titleFont = _settings.TitleFont();
             var bodyFont  = _settings.BodyFont();
             int titleH = (int)titleFont.LineHeight;
@@ -436,6 +536,10 @@ namespace TyriaPlanner.Hud.Ui
             {
                 AddVoiceButton(row, ev.VoiceChannelUrl, ref x, buttonY);
             }
+            if (ev is MySignup signup && signup.CheckinStatus == "pending")
+            {
+                AddCheckinButton(row, signup.Id, ref x, buttonY);
+            }
             var openUrl = $"https://tyriaplanner.com/event/{ev.Id}";
             var open = new StandardButton
             {
@@ -451,6 +555,46 @@ namespace TyriaPlanner.Hud.Ui
                 SafeUrl.Open(openUrl);
                 FlashCopied(open, "Open");
             };
+        }
+        private void AddCheckinButton(Container parent, string eventId, ref int x, int y)
+        {
+            var btn = new StandardButton
+            {
+                Parent = parent,
+                Text = "Check in",
+                Width = 86,
+                Height = 24,
+                Location = new Point(x, y),
+            };
+            btn.Click += async (_, __) =>
+            {
+                btn.Enabled = false;
+                btn.Text = "...";
+                var baseUrl = _settings.ApiBaseUrl.Value;
+                var bearer  = _settings.CachedBearer.Value;
+                bool ok = await _api.CheckinAsync(baseUrl, bearer, eventId, CancellationToken.None).ConfigureAwait(false);
+                GameService.Overlay.QueueMainThreadUpdate(_2 =>
+                {
+                    try
+                    {
+                        btn.Text = ok ? "âœ“ checked in" : "failed";
+                        if (!ok)
+                        {
+                            Timer t = null;
+                            t = new Timer(__2 =>
+                            {
+                                GameService.Overlay.QueueMainThreadUpdate(___ =>
+                                {
+                                    try { btn.Enabled = true; btn.Text = "Check in"; } catch { }
+                                });
+                                t?.Dispose();
+                            }, null, TimeSpan.FromSeconds(1.5), Timeout.InfiniteTimeSpan);
+                        }
+                    }
+                    catch { }
+                });
+            };
+            x += btn.Width + 6;
         }
         private static void AddVoiceButton(Container parent, string url, ref int x, int y)
         {

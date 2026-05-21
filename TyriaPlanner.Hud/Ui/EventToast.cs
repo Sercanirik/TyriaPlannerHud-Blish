@@ -48,7 +48,7 @@ namespace TyriaPlanner.Hud.Ui
             if (snoozeRow) baseHeight += 32;
             Height = baseHeight;
             BackgroundColor = new Color(14, 14, 18, 235);
-            var typeColor = EventColors.For(eventType);
+            var typeColor = EventColors.For(eventType, settings.ColorTheme.Value);
             new Panel
             {
                 Parent = this,

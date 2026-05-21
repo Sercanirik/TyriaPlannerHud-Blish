@@ -106,9 +106,74 @@ namespace TyriaPlanner.Hud.Api
                 }
             }
         }
+        public async Task<bool> CheckinAsync(string baseUrl, string bearer, string eventId, CancellationToken cancel)
+        {
+            if (string.IsNullOrWhiteSpace(bearer) || string.IsNullOrWhiteSpace(eventId)) return false;
+            var body = JsonConvert.SerializeObject(new { event_id = eventId });
+            using (var req = new HttpRequestMessage(HttpMethod.Post, baseUrl.TrimEnd('/') + "/api/addon/checkin"))
+            {
+                req.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
+                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
+                using (var res = await _http.SendAsync(req, cancel).ConfigureAwait(false))
+                {
+                    return res.IsSuccessStatusCode;
+                }
+            }
+        }
+        public async Task<PendingApprovalsResponse> FetchApprovalsAsync(string baseUrl, string bearer, CancellationToken cancel)
+        {
+            if (string.IsNullOrWhiteSpace(bearer)) return null;
+            using (var req = new HttpRequestMessage(HttpMethod.Get, baseUrl.TrimEnd('/') + "/api/addon/approvals"))
+            {
+                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
+                using (var res = await _http.SendAsync(req, cancel).ConfigureAwait(false))
+                {
+                    if (!res.IsSuccessStatusCode) return null;
+                    var body = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    return JsonConvert.DeserializeObject<PendingApprovalsResponse>(body);
+                }
+            }
+        }
+        public async Task<bool> DecideApprovalAsync(string baseUrl, string bearer, string signupId, string decision, CancellationToken cancel)
+        {
+            if (string.IsNullOrWhiteSpace(bearer) || string.IsNullOrWhiteSpace(signupId)) return false;
+            var body = JsonConvert.SerializeObject(new { decision });
+            using (var req = new HttpRequestMessage(HttpMethod.Post, baseUrl.TrimEnd('/') + "/api/addon/approvals/" + signupId + "/decide"))
+            {
+                req.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
+                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
+                using (var res = await _http.SendAsync(req, cancel).ConfigureAwait(false))
+                {
+                    return res.IsSuccessStatusCode;
+                }
+            }
+        }
         public void Dispose()
         {
             _http?.Dispose();
         }
+    }
+    public sealed class PendingApprovalsResponse
+    {
+        [JsonProperty("pending")]    public PendingApproval[] Pending { get; set; } = Array.Empty<PendingApproval>();
+        [JsonProperty("serverTime")] public DateTime ServerTime { get; set; }
+    }
+    public sealed class PendingApproval
+    {
+        [JsonProperty("signupId")]             public string SignupId { get; set; }
+        [JsonProperty("eventId")]              public string EventId { get; set; }
+        [JsonProperty("eventTitle")]           public string EventTitle { get; set; }
+        [JsonProperty("eventType")]            public string EventType { get; set; }
+        [JsonProperty("scheduledAt")]          public DateTime ScheduledAt { get; set; }
+        [JsonProperty("guildName")]            public string GuildName { get; set; }
+        [JsonProperty("guildTag")]             public string GuildTag { get; set; }
+        [JsonProperty("applicantUsername")]    public string ApplicantUsername { get; set; }
+        [JsonProperty("applicantDisplayName")] public string ApplicantDisplayName { get; set; }
+        [JsonProperty("applicantAccountName")] public string ApplicantAccountName { get; set; }
+        [JsonProperty("characterName")]        public string CharacterName { get; set; }
+        [JsonProperty("characterProfession")]  public string CharacterProfession { get; set; }
+        [JsonProperty("characterEliteSpec")]   public string CharacterEliteSpec { get; set; }
+        [JsonProperty("defaultRoleKey")]       public string DefaultRoleKey { get; set; }
+        [JsonProperty("note")]                 public string Note { get; set; }
     }
 }

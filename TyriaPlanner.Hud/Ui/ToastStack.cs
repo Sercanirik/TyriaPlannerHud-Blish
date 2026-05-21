@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using Blish_HUD;
 using Blish_HUD.Controls;
 using Microsoft.Xna.Framework;
 using TyriaPlanner.Hud.Settings;
 namespace TyriaPlanner.Hud.Ui
 {
-    public sealed class ToastStack
+    public sealed class ToastStack : IDisposable
     {
         public event Action<EventToast> ToastPushed;
         private const int Margin = 12;
@@ -15,14 +16,61 @@ namespace TyriaPlanner.Hud.Ui
         private const int ToastWidth = 380;
         private const int MaxVisible = 4;
         private readonly List<EventToast> _toasts = new List<EventToast>();
+        private readonly Queue<Func<EventToast>> _deferred = new Queue<Func<EventToast>>();
         private readonly ModuleSettings _settings;
+        private readonly Timer _combatPoller;
         public ToastStack(ModuleSettings settings)
         {
             _settings = settings;
+            _combatPoller = new Timer(_ => TryDrainDeferred(), null,
+                TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        }
+        public void Push(Func<EventToast> factory)
+        {
+            if (factory == null) return;
+            if (ShouldDefer())
+            {
+                lock (_deferred) { _deferred.Enqueue(factory); }
+                return;
+            }
+            GameService.Overlay.QueueMainThreadUpdate(_ =>
+            {
+                try { Show(factory()); } catch { }
+            });
         }
         public void Push(EventToast toast)
         {
+            if (toast == null) return;
+            if (ShouldDefer())
+            {
+                lock (_deferred) { _deferred.Enqueue(() => toast); }
+                return;
+            }
             GameService.Overlay.QueueMainThreadUpdate(_ => Show(toast));
+        }
+        private bool ShouldDefer()
+        {
+            if (_settings?.PauseInCombat == null || !_settings.PauseInCombat.Value) return false;
+            try { return GameService.Gw2Mumble.PlayerCharacter.IsInCombat; }
+            catch { return false; }
+        }
+        private void TryDrainDeferred()
+        {
+            if (ShouldDefer()) return;
+            List<Func<EventToast>> drained;
+            lock (_deferred)
+            {
+                if (_deferred.Count == 0) return;
+                drained = new List<Func<EventToast>>(_deferred);
+                _deferred.Clear();
+            }
+            GameService.Overlay.QueueMainThreadUpdate(_ =>
+            {
+                foreach (var f in drained)
+                {
+                    try { Show(f()); } catch { }
+                }
+            });
         }
         private void Show(EventToast toast)
         {
@@ -74,7 +122,7 @@ namespace TyriaPlanner.Hud.Ui
                     }
                     break;
                 }
-                default: 
+                default:
                 {
                     var x = (screen.Width - ToastWidth) / 2;
                     var y = TopBarClearance;
@@ -90,6 +138,12 @@ namespace TyriaPlanner.Hud.Ui
                 t.Dispose();
             }
             _toasts.Clear();
+            lock (_deferred) { _deferred.Clear(); }
+        }
+        public void Dispose()
+        {
+            _combatPoller?.Dispose();
+            Clear();
         }
     }
 }
