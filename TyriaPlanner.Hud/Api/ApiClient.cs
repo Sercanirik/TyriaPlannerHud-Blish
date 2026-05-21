@@ -138,14 +138,30 @@ namespace TyriaPlanner.Hud.Api
         {
             if (string.IsNullOrWhiteSpace(bearer) || string.IsNullOrWhiteSpace(signupId)) return false;
             var body = JsonConvert.SerializeObject(new { decision });
-            using (var req = new HttpRequestMessage(HttpMethod.Post, baseUrl.TrimEnd('/') + "/api/addon/approvals/" + signupId + "/decide"))
+            var url = baseUrl.TrimEnd('/') + "/api/addon/approvals/" + signupId + "/decide";
+            try
             {
-                req.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
-                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
-                using (var res = await _http.SendAsync(req, cancel).ConfigureAwait(false))
+                using (var req = new HttpRequestMessage(HttpMethod.Post, url))
                 {
-                    return res.IsSuccessStatusCode;
+                    req.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
+                    req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
+                    using (var res = await _http.SendAsync(req, cancel).ConfigureAwait(false))
+                    {
+                        if (!res.IsSuccessStatusCode)
+                        {
+                            var errBody = string.Empty;
+                            try { errBody = await res.Content.ReadAsStringAsync().ConfigureAwait(false); } catch { }
+                            Logger.Warn("decide failed Â· {0} {1} Â· {2}", (int)res.StatusCode, res.ReasonPhrase, errBody);
+                            return false;
+                        }
+                        return true;
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn(ex, "decide threw for {0}", signupId);
+                return false;
             }
         }
         public void Dispose()
