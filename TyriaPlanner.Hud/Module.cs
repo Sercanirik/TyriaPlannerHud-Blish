@@ -23,6 +23,7 @@ namespace TyriaPlanner.Hud
         private NotificationService _notify;
         private NotificationHistory _history;
         private PollingService _poller;
+        private StreamSubscriber _stream;
         private WeeklyResetReminder _resetReminder;
         private MenuWindow _menu;
         private CornerIcon _cornerIcon;
@@ -44,6 +45,7 @@ namespace TyriaPlanner.Hud
             _stack = new ToastStack(_settings);
             _notify = new NotificationService(_stack, _settings, _history);
             _poller = new PollingService(_api, _settings, _notify);
+            _stream = new StreamSubscriber(_settings, () => _poller?.RefreshNow());
             _resetReminder = new WeeklyResetReminder(_settings, _stack);
             _menu = new MenuWindow(_api, _settings, _notify, _history);
             await Task.CompletedTask;
@@ -67,12 +69,14 @@ namespace TyriaPlanner.Hud
             };
             _cornerIcon.Click += (_, __) => _menu?.Toggle();
             _poller.Start();
+            _stream.Start();
             _resetReminder.Start();
             Logger.Info("Tyria Planner HUD loaded.");
         }
         protected override void Unload()
         {
             _poller?.Dispose();
+            _stream?.Dispose();
             _resetReminder?.Dispose();
             _stack?.Clear();
             _menu?.Dispose();

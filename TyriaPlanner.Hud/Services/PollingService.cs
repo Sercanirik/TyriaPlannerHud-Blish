@@ -40,6 +40,17 @@ namespace TyriaPlanner.Hud.Services
             }
             _loop = null;
         }
+        public void RefreshNow()
+        {
+            if (_cancel == null) return;
+            var cancel = _cancel.Token;
+            Task.Run(async () =>
+            {
+                try { await PollOnceAsync(cancel).ConfigureAwait(false); }
+                catch (TaskCanceledException) { }
+                catch (Exception ex) { Logger.Warn(ex, "Stream-triggered refresh failed."); }
+            });
+        }
         private async Task RunAsync(CancellationToken cancel)
         {
             while (!cancel.IsCancellationRequested)
