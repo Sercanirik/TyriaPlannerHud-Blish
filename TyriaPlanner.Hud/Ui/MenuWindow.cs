@@ -17,6 +17,7 @@ namespace TyriaPlanner.Hud.Ui
         private readonly ApiClient _api;
         private readonly ModuleSettings _settings;
         private readonly NotificationService _notify;
+        private readonly NotificationHistory _history;
         private readonly Panel _titleBar;
         private readonly FlowPanel _content;
         private readonly Label _statusLabel;
@@ -31,11 +32,12 @@ namespace TyriaPlanner.Hud.Ui
         private const int WindowHeight = 560;
         private const int TitleBarHeight = 32;
         private const int TogglesHeight  = 28;
-        public MenuWindow(ApiClient api, ModuleSettings settings, NotificationService notify)
+        public MenuWindow(ApiClient api, ModuleSettings settings, NotificationService notify, NotificationHistory history)
         {
             _api = api;
             _settings = settings;
             _notify = notify;
+            _history = history;
             Width = WindowWidth;
             Height = WindowHeight;
             BackgroundColor = new Color(14, 14, 18, 240);
@@ -264,7 +266,67 @@ namespace TyriaPlanner.Hud.Ui
                     AddEventRow(ev, showSqjoin: false);
                 }
             }
+            var history = _history?.Snapshot();
+            if (history != null && history.Count > 0)
+            {
+                AddSectionHeader($"Recent notifications  Â·  last {Math.Min(history.Count, 10)}");
+                foreach (var entry in history.GetRange(0, Math.Min(history.Count, 10)))
+                {
+                    AddHistoryRow(entry);
+                }
+            }
             _statusLabel.Text = $"Updated Â· server time {resp.ServerTime:HH:mm:ss}";
+        }
+        private void AddHistoryRow(HistoryEntry entry)
+        {
+            var typeColor = EventColors.For(entry.EventType);
+            var bodyFont = _settings.BodyFont();
+            var titleFont = _settings.TitleFont();
+            var row = new Panel
+            {
+                Parent = _content,
+                Width = _content.Width - 16,
+                Height = (int)titleFont.LineHeight + (int)bodyFont.LineHeight + 16,
+                BackgroundColor = new Color(18, 18, 22, 200),
+            };
+            new Panel
+            {
+                Parent = row,
+                BackgroundColor = typeColor,
+                Location = new Point(0, 0),
+                Width = 3,
+                Height = row.Height,
+            };
+            new Label
+            {
+                Parent = row,
+                Text = entry.Title,
+                Font = titleFont,
+                TextColor = typeColor,
+                Location = new Point(10, 6),
+                Width = row.Width - 20,
+                Height = (int)titleFont.LineHeight + 2,
+                AutoSizeWidth = false,
+            };
+            new Label
+            {
+                Parent = row,
+                Text = $"{entry.Subtitle} Â· {FormatAgo(entry.At)}",
+                Font = bodyFont,
+                TextColor = new Color(180, 180, 180),
+                Location = new Point(10, 8 + (int)titleFont.LineHeight),
+                Width = row.Width - 20,
+                Height = (int)bodyFont.LineHeight + 2,
+                AutoSizeWidth = false,
+            };
+        }
+        private static string FormatAgo(DateTime past)
+        {
+            var seconds = (DateTime.UtcNow - past).TotalSeconds;
+            if (seconds < 60) return $"{(int)seconds}s ago";
+            if (seconds < 3600) return $"{(int)(seconds / 60)}m ago";
+            if (seconds < 86400) return $"{(int)(seconds / 3600)}h ago";
+            return $"{(int)(seconds / 86400)}d ago";
         }
         private void AddSectionHeader(string text)
         {
@@ -341,7 +403,7 @@ namespace TyriaPlanner.Hud.Ui
             new Label
             {
                 Parent = row,
-                Text = string.IsNullOrWhiteSpace(ev.Title) ? PrettyType(ev.Type) : ev.Title,
+                Text = (ev.IsRecurring ? "[R] " : string.Empty) + (string.IsNullOrWhiteSpace(ev.Title) ? PrettyType(ev.Type) : ev.Title),
                 Font = titleFont,
                 TextColor = typeColor,
                 Location = new Point(12, titleY),
@@ -370,6 +432,10 @@ namespace TyriaPlanner.Hud.Ui
                 }
                 AddWhisperButton(row, commander, ref x, buttonY, 84);
             }
+            if (!string.IsNullOrWhiteSpace(ev.VoiceChannelUrl))
+            {
+                AddVoiceButton(row, ev.VoiceChannelUrl, ref x, buttonY);
+            }
             var openUrl = $"https://tyriaplanner.com/event/{ev.Id}";
             var open = new StandardButton
             {
@@ -386,6 +452,25 @@ namespace TyriaPlanner.Hud.Ui
                 catch (Exception ex) { Logger.GetLogger<MenuWindow>().Warn(ex, "Browser open failed."); }
                 FlashCopied(open, "Open");
             };
+        }
+        private static void AddVoiceButton(Container parent, string url, ref int x, int y)
+        {
+            var btn = new StandardButton
+            {
+                Parent = parent,
+                Text = "Voice",
+                Width = 64,
+                Height = 24,
+                Location = new Point(x, y),
+            };
+            btn.Click += (_, __) =>
+            {
+                Clipboard.Set(url);
+                try { Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true }); }
+                catch (Exception ex) { Logger.GetLogger<MenuWindow>().Warn(ex, "Voice URL launch failed."); }
+                FlashCopied(btn, "Voice");
+            };
+            x += btn.Width + 6;
         }
         private static void AddWhisperButton(Container parent, string accountName, ref int x, int y, int width)
         {

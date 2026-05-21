@@ -21,7 +21,9 @@ namespace TyriaPlanner.Hud
         private ApiClient _api;
         private ToastStack _stack;
         private NotificationService _notify;
+        private NotificationHistory _history;
         private PollingService _poller;
+        private WeeklyResetReminder _resetReminder;
         private MenuWindow _menu;
         private CornerIcon _cornerIcon;
         private Texture2D _iconTexture;
@@ -38,10 +40,12 @@ namespace TyriaPlanner.Hud
         protected override async Task LoadAsync()
         {
             _api = new ApiClient();
-            _stack = new ToastStack();
-            _notify = new NotificationService(_stack, _settings);
+            _history = new NotificationHistory();
+            _stack = new ToastStack(_settings);
+            _notify = new NotificationService(_stack, _settings, _history);
             _poller = new PollingService(_api, _settings, _notify);
-            _menu = new MenuWindow(_api, _settings, _notify);
+            _resetReminder = new WeeklyResetReminder(_settings, _stack);
+            _menu = new MenuWindow(_api, _settings, _notify, _history);
             await Task.CompletedTask;
         }
         protected override void OnModuleLoaded(System.EventArgs e)
@@ -63,11 +67,13 @@ namespace TyriaPlanner.Hud
             };
             _cornerIcon.Click += (_, __) => _menu?.Toggle();
             _poller.Start();
+            _resetReminder.Start();
             Logger.Info("Tyria Planner HUD loaded.");
         }
         protected override void Unload()
         {
             _poller?.Dispose();
+            _resetReminder?.Dispose();
             _stack?.Clear();
             _menu?.Dispose();
             _cornerIcon?.Dispose();

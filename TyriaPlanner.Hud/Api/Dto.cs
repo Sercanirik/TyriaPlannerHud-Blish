@@ -18,6 +18,7 @@ namespace TyriaPlanner.Hud.Api
         [JsonProperty("isPublic")]               public bool IsPublic { get; set; }
         [JsonProperty("wvwMap")]                 public string WvwMap { get; set; }
         [JsonProperty("voiceChannelUrl")]        public string VoiceChannelUrl { get; set; }
+        [JsonProperty("isRecurring")]            public bool IsRecurring { get; set; }
         [JsonProperty("guildName")]              public string GuildName { get; set; }
         [JsonProperty("guildTag")]               public string GuildTag { get; set; }
         [JsonProperty("commanderAccountName")]   public string CommanderAccountName { get; set; }

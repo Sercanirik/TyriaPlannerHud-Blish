@@ -15,9 +15,11 @@ namespace TyriaPlanner.Hud.Ui
     public sealed class EventToast : Container
     {
         private readonly string _commanderAccountName;
+        private readonly string _voiceChannelUrl;
         private readonly string _eventBaseUrl;
         private readonly bool _showSqjoin;
         private readonly bool _showJoinFromAppHint;
+        private readonly Action<int> _onSnooze;
         public EventToast(
             ModuleSettings settings,
             string title,
@@ -27,16 +29,23 @@ namespace TyriaPlanner.Hud.Ui
             string commanderAccountName,
             string eventId,
             string eventBaseUrl,
+            string voiceChannelUrl = null,
             bool showSqjoin = true,
-            bool showJoinFromAppHint = false)
+            bool showJoinFromAppHint = false,
+            bool isRecurring = false,
+            Action<int> onSnooze = null)
         {
             _commanderAccountName = commanderAccountName;
+            _voiceChannelUrl = voiceChannelUrl;
             _eventBaseUrl = eventBaseUrl;
             _showSqjoin = showSqjoin;
             _showJoinFromAppHint = showJoinFromAppHint;
+            _onSnooze = onSnooze;
             var titleFont = settings.TitleFont();
             var bodyFont  = settings.BodyFont();
-            var baseHeight = showJoinFromAppHint ? 122 : 104;
+            bool snoozeRow = _onSnooze != null;
+            var baseHeight = showJoinFromAppHint ? 130 : 110;
+            if (snoozeRow) baseHeight += 32;
             Height = baseHeight;
             BackgroundColor = new Color(14, 14, 18, 235);
             var typeColor = EventColors.For(eventType);
@@ -48,10 +57,11 @@ namespace TyriaPlanner.Hud.Ui
                 Width = 4,
                 Height = baseHeight,
             };
+            var titleText = (isRecurring ? "[R] " : string.Empty) + title;
             new Label
             {
                 Parent = this,
-                Text = title,
+                Text = titleText,
                 Font = titleFont,
                 TextColor = typeColor,
                 Location = new Point(12, 8),
@@ -64,7 +74,7 @@ namespace TyriaPlanner.Hud.Ui
                 Parent = this,
                 Text = "X",
                 Width = 30,
-                Height = 24,
+                Height = 22,
                 Location = new Point(348, 6),
             };
             dismiss.Click += (_, __) => Dispose();
@@ -94,17 +104,28 @@ namespace TyriaPlanner.Hud.Ui
                     AutoSizeWidth = false,
                 };
             }
-            var buttonRowY = baseHeight - 32;
+            var actionsY = baseHeight - (snoozeRow ? 60 : 32);
             var x = 12;
             if (_showSqjoin && !string.IsNullOrWhiteSpace(_commanderAccountName))
             {
-                AddCopyButton("/sqjoin", $"/sqjoin {_commanderAccountName}", ref x, buttonRowY, 84);
+                AddCopyButton("/sqjoin", $"/sqjoin {_commanderAccountName}", ref x, actionsY, 84);
             }
             if (!string.IsNullOrWhiteSpace(_commanderAccountName))
             {
-                AddWhisperButton(_commanderAccountName, ref x, buttonRowY, 84);
+                AddWhisperButton(_commanderAccountName, ref x, actionsY, 84);
             }
-            AddOpenButton(ref x, buttonRowY);
+            if (!string.IsNullOrWhiteSpace(_voiceChannelUrl))
+            {
+                AddVoiceButton(_voiceChannelUrl, ref x, actionsY, 70);
+            }
+            AddOpenButton(ref x, actionsY);
+            if (snoozeRow)
+            {
+                var sy = actionsY + 32;
+                var sx = 12;
+                AddSnoozeButton("Snooze 5 min",  5,  ref sx, sy);
+                AddSnoozeButton("Snooze 15 min", 15, ref sx, sy);
+            }
         }
         private void AddCopyButton(string label, string payload, ref int x, int y, int width)
         {
@@ -140,6 +161,25 @@ namespace TyriaPlanner.Hud.Ui
             };
             x += width + 6;
         }
+        private void AddVoiceButton(string url, ref int x, int y, int width)
+        {
+            var btn = new StandardButton
+            {
+                Parent = this,
+                Text = "Voice",
+                Location = new Point(x, y),
+                Width = width,
+                Height = 26,
+            };
+            btn.Click += (_, __) =>
+            {
+                Clipboard.Set(url);
+                try { Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true }); }
+                catch (Exception ex) { Logger.GetLogger<EventToast>().Warn(ex, "Voice URL launch failed."); }
+                FlashCopied(btn, "Voice");
+            };
+            x += width + 6;
+        }
         private void AddOpenButton(ref int x, int y)
         {
             var open = new StandardButton
@@ -147,7 +187,7 @@ namespace TyriaPlanner.Hud.Ui
                 Parent = this,
                 Text = "Open",
                 Location = new Point(x, y),
-                Width = 80,
+                Width = 70,
                 Height = 26,
             };
             open.Click += (_, __) =>
@@ -160,7 +200,6 @@ namespace TyriaPlanner.Hud.Ui
                         FileName = _eventBaseUrl,
                         UseShellExecute = true,
                     });
-                    Logger.GetLogger<EventToast>().Info("Launched browser for {0}", _eventBaseUrl);
                 }
                 catch (Exception ex)
                 {
@@ -170,6 +209,23 @@ namespace TyriaPlanner.Hud.Ui
             };
             x += open.Width + 6;
         }
+        private void AddSnoozeButton(string label, int minutes, ref int x, int y)
+        {
+            var btn = new StandardButton
+            {
+                Parent = this,
+                Text = label,
+                Location = new Point(x, y),
+                Width = 110,
+                Height = 26,
+            };
+            btn.Click += (_, __) =>
+            {
+                _onSnooze?.Invoke(minutes);
+                Dispose();
+            };
+            x += btn.Width + 6;
+        }
         private static void FlashCopied(StandardButton btn, string originalText)
         {
             btn.Text = "âœ“ copied";
@@ -178,7 +234,7 @@ namespace TyriaPlanner.Hud.Ui
             {
                 GameService.Overlay.QueueMainThreadUpdate(__ =>
                 {
-                    try { btn.Text = originalText; } catch {  }
+                    try { btn.Text = originalText; } catch { }
                 });
                 t?.Dispose();
             }, null, TimeSpan.FromMilliseconds(1400), Timeout.InfiniteTimeSpan);

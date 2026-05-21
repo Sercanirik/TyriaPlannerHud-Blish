@@ -11,6 +11,12 @@ namespace TyriaPlanner.Hud.Settings
         Medium,
         Large,
     }
+    public enum ToastPositionPreference
+    {
+        TopCenter,
+        TopRight,
+        BottomRight,
+    }
     public sealed class ModuleSettings
     {
         public SettingEntry<string> ApiBaseUrl { get; }
@@ -20,6 +26,9 @@ namespace TyriaPlanner.Hud.Settings
         public SettingEntry<bool>   NotifyNewGuildEvents { get; }
         public SettingEntry<int>    PollIntervalSeconds { get; }
         public SettingEntry<FontSizePreference> FontSize { get; }
+        public SettingEntry<ToastPositionPreference> ToastPosition { get; }
+        public SettingEntry<bool> PlaySoundOnToast { get; }
+        public SettingEntry<bool> NotifyWeeklyReset { get; }
         public ModuleSettings(SettingCollection root)
         {
             ApiBaseUrl = root.DefineSetting(
@@ -58,6 +67,21 @@ namespace TyriaPlanner.Hud.Settings
                 FontSizePreference.Medium,
                 () => "Font size",
                 () => "Bumps all text in the menu and toasts by one or two notches. Useful on 4K or for far-away seating.");
+            ToastPosition = root.DefineSetting(
+                "ToastPosition",
+                ToastPositionPreference.TopCenter,
+                () => "Toast position",
+                () => "Where notification toasts pile up on screen.");
+            PlaySoundOnToast = root.DefineSetting(
+                "PlaySoundOnToast",
+                true,
+                () => "Play sound on toast",
+                () => "Short chime when a check-in or starting reminder appears.");
+            NotifyWeeklyReset = root.DefineSetting(
+                "NotifyWeeklyReset",
+                true,
+                () => "Weekly raid reset reminder",
+                () => "One toast on Thursday 19:30 UTC reminding you the raid week reset (refresh your kill-proofs).");
         }
         public BitmapFont TitleFont()
         {

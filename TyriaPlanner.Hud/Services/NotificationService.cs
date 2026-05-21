@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Media;
 using Blish_HUD;
 using TyriaPlanner.Hud.Api;
 using TyriaPlanner.Hud.Settings;
@@ -11,15 +12,27 @@ namespace TyriaPlanner.Hud.Services
         private static readonly Logger Logger = Logger.GetLogger<NotificationService>();
         private readonly ToastStack _stack;
         private readonly ModuleSettings _settings;
-        public NotificationService(ToastStack stack, ModuleSettings settings)
+        private readonly NotificationHistory _history;
+        public NotificationService(ToastStack stack, ModuleSettings settings, NotificationHistory history)
         {
             _stack = stack;
             _settings = settings;
+            _history = history;
+        }
+        private void RecordAndChime(string title, string subtitle, string eventType, string eventId)
+        {
+            _history.Record(title, subtitle, eventType, eventId);
+            if (_settings.PlaySoundOnToast.Value)
+            {
+                try { SystemSounds.Asterisk.Play(); }
+                catch (Exception ex) { Logger.Warn(ex, "System sound failed."); }
+            }
         }
         public void PostCheckinOpenToast(MySignup signup)
         {
             var title = $"Check-in time Â· {Pretty(signup.Title, signup.Type)}";
             var subtitle = "Open the Tyria Planner app and check in";
+            RecordAndChime(title, subtitle, signup.Type, signup.Id);
             _stack.Push(new EventToast(
                 settings: _settings,
                 title: title,
@@ -27,10 +40,13 @@ namespace TyriaPlanner.Hud.Services
                 accent: ToastAccent.Reminder,
                 eventType: signup.Type,
                 commanderAccountName: signup.CommanderAccountName,
+                voiceChannelUrl: signup.VoiceChannelUrl,
                 eventId: signup.Id,
                 eventBaseUrl: BuildEventUrl(signup.Id),
                 showSqjoin: true,
-                showJoinFromAppHint: false));
+                showJoinFromAppHint: false,
+                isRecurring: signup.IsRecurring,
+                onSnooze: minutes => ScheduleSnooze(minutes, () => PostCheckinOpenToast(signup))));
         }
         public void PostStartingToast(MySignup signup)
         {
@@ -38,6 +54,7 @@ namespace TyriaPlanner.Hud.Services
             var subtitle = signup.GuildName != null
                 ? $"{signup.GuildName} Â· commander {Commander(signup)}"
                 : $"Public Â· commander {Commander(signup)}";
+            RecordAndChime(title, subtitle, signup.Type, signup.Id);
             _stack.Push(new EventToast(
                 settings: _settings,
                 title: title,
@@ -45,10 +62,13 @@ namespace TyriaPlanner.Hud.Services
                 accent: ToastAccent.Reminder,
                 eventType: signup.Type,
                 commanderAccountName: signup.CommanderAccountName,
+                voiceChannelUrl: signup.VoiceChannelUrl,
                 eventId: signup.Id,
                 eventBaseUrl: BuildEventUrl(signup.Id),
                 showSqjoin: true,
-                showJoinFromAppHint: false));
+                showJoinFromAppHint: false,
+                isRecurring: signup.IsRecurring,
+                onSnooze: minutes => ScheduleSnooze(minutes, () => PostStartingToast(signup))));
         }
         public void PostNewGuildEventToast(NewGuildEvent ev)
         {
@@ -57,6 +77,7 @@ namespace TyriaPlanner.Hud.Services
             var subtitle = ev.GuildName != null
                 ? $"{ev.GuildName} Â· in {FormatRelative(when)} Â· {Commander(ev)}"
                 : $"in {FormatRelative(when)} Â· {Commander(ev)}";
+            RecordAndChime(title, subtitle, ev.Type, ev.Id);
             _stack.Push(new EventToast(
                 settings: _settings,
                 title: title,
@@ -64,10 +85,23 @@ namespace TyriaPlanner.Hud.Services
                 accent: ToastAccent.NewEvent,
                 eventType: ev.Type,
                 commanderAccountName: ev.CommanderAccountName,
+                voiceChannelUrl: ev.VoiceChannelUrl,
                 eventId: ev.Id,
                 eventBaseUrl: BuildEventUrl(ev.Id),
                 showSqjoin: false,
-                showJoinFromAppHint: true));
+                showJoinFromAppHint: true,
+                isRecurring: ev.IsRecurring,
+                onSnooze: null));
+        }
+        private static void ScheduleSnooze(int minutes, Action repost)
+        {
+            if (minutes <= 0) { repost(); return; }
+            System.Threading.Timer t = null;
+            t = new System.Threading.Timer(_ =>
+            {
+                GameService.Overlay.QueueMainThreadUpdate(__ => repost());
+                t?.Dispose();
+            }, null, TimeSpan.FromMinutes(minutes), System.Threading.Timeout.InfiniteTimeSpan);
         }
         private static string Pretty(string title, string type)
         {
