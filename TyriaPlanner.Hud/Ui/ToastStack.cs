@@ -9,14 +9,14 @@ namespace TyriaPlanner.Hud.Ui
 {
     public sealed class ToastStack : IDisposable
     {
-        public event Action<EventToast> ToastPushed;
+        public event Action<Container> ToastPushed;
         private const int Margin = 12;
         private const int TopBarClearance = 36;
         private const int Spacing = 8;
         private const int ToastWidth = 380;
         private const int MaxVisible = 4;
-        private readonly List<EventToast> _toasts = new List<EventToast>();
-        private readonly Queue<Func<EventToast>> _deferred = new Queue<Func<EventToast>>();
+        private readonly List<Container> _toasts = new List<Container>();
+        private readonly Queue<Func<Container>> _deferred = new Queue<Func<Container>>();
         private readonly ModuleSettings _settings;
         private readonly Timer _combatPoller;
         public ToastStack(ModuleSettings settings)
@@ -25,7 +25,7 @@ namespace TyriaPlanner.Hud.Ui
             _combatPoller = new Timer(_ => TryDrainDeferred(), null,
                 TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
         }
-        public void Push(Func<EventToast> factory)
+        public void Push(Func<Container> factory)
         {
             if (factory == null) return;
             if (ShouldDefer())
@@ -38,7 +38,7 @@ namespace TyriaPlanner.Hud.Ui
                 try { Show(factory()); } catch { }
             });
         }
-        public void Push(EventToast toast)
+        public void Push(Container toast)
         {
             if (toast == null) return;
             if (ShouldDefer())
@@ -57,11 +57,11 @@ namespace TyriaPlanner.Hud.Ui
         private void TryDrainDeferred()
         {
             if (ShouldDefer()) return;
-            List<Func<EventToast>> drained;
+            List<Func<Container>> drained;
             lock (_deferred)
             {
                 if (_deferred.Count == 0) return;
-                drained = new List<Func<EventToast>>(_deferred);
+                drained = new List<Func<Container>>(_deferred);
                 _deferred.Clear();
             }
             GameService.Overlay.QueueMainThreadUpdate(_ =>
@@ -72,7 +72,7 @@ namespace TyriaPlanner.Hud.Ui
                 }
             });
         }
-        private void Show(EventToast toast)
+        private void Show(Container toast)
         {
             var screen = GameService.Graphics.SpriteScreen;
             toast.Parent = screen;
@@ -90,7 +90,7 @@ namespace TyriaPlanner.Hud.Ui
         }
         private void OnToastDisposed(object sender, System.EventArgs e)
         {
-            if (sender is EventToast t)
+            if (sender is Container t)
             {
                 _toasts.Remove(t);
                 ReflowLocation(GameService.Graphics.SpriteScreen);

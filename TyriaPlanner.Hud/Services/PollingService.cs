@@ -17,6 +17,7 @@ namespace TyriaPlanner.Hud.Services
         private Task _loop;
         private readonly HashSet<string> _shownReminders = new HashSet<string>();
         private readonly HashSet<string> _shownGuildEvents = new HashSet<string>();
+        private readonly HashSet<string> _shownAnnouncements = new HashSet<string>();
         private DateTimeOffset? _lastSeen;
         public PollingService(ApiClient api, ModuleSettings settings, NotificationService notify)
         {
@@ -112,6 +113,16 @@ namespace TyriaPlanner.Hud.Services
                     if (_shownGuildEvents.Add(ev.Id))
                     {
                         _notify.PostNewGuildEventToast(ev);
+                    }
+                }
+            }
+            if (_settings.NotifyGuildAnnouncements.Value && resp.NewAnnouncements != null)
+            {
+                foreach (var ann in resp.NewAnnouncements)
+                {
+                    if (_shownAnnouncements.Add(ann.Id))
+                    {
+                        _notify.PostGuildAnnouncementToast(ann);
                     }
                 }
             }

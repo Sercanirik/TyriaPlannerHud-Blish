@@ -31,6 +31,7 @@ namespace TyriaPlanner.Hud.Settings
         public SettingEntry<string> CachedBearer { get; }       
         public SettingEntry<bool>   NotifyOwnSignups { get; }
         public SettingEntry<bool>   NotifyNewGuildEvents { get; }
+        public SettingEntry<bool>   NotifyGuildAnnouncements { get; }
         public SettingEntry<int>    PollIntervalSeconds { get; }
         public SettingEntry<FontSizePreference> FontSize { get; }
         public SettingEntry<ToastPositionPreference> ToastPosition { get; }
@@ -65,6 +66,11 @@ namespace TyriaPlanner.Hud.Settings
                 true,
                 () => "Notify new guild events",
                 () => "Pops a toast when one of your guilds posts a new event.");
+            NotifyGuildAnnouncements = root.DefineSetting(
+                "NotifyGuildAnnouncements",
+                true,
+                () => "Notify guild announcements",
+                () => "Pops a toast when an owner or officer of one of your guilds posts an announcement.");
             PollIntervalSeconds = root.DefineSetting(
                 "PollIntervalSeconds",
                 45,

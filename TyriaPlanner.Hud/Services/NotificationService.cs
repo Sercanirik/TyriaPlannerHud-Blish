@@ -70,6 +70,16 @@ namespace TyriaPlanner.Hud.Services
                 isRecurring: signup.IsRecurring,
                 onSnooze: minutes => ScheduleSnooze(minutes, () => PostStartingToast(signup))));
         }
+        public void PostGuildAnnouncementToast(Announcement ann)
+        {
+            var title = string.IsNullOrWhiteSpace(ann.GuildTag)
+                ? $"ðŸ“¢ {ann.GuildName}"
+                : $"ðŸ“¢ [{ann.GuildTag}] {ann.GuildName}";
+            var subtitle = string.IsNullOrWhiteSpace(ann.Title) ? "" : ann.Title;
+            var body     = ann.Content ?? string.Empty;
+            RecordAndChime(title, subtitle, "announcement", ann.Id);
+            _stack.Push(new AnnouncementToast(_settings, title, subtitle, body));
+        }
         public void PostNewGuildEventToast(NewGuildEvent ev)
         {
             var title = $"New event Â· {Pretty(ev.Title, ev.Type)}";
