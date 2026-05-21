@@ -71,7 +71,7 @@ namespace TyriaPlanner.Hud
             _poller.Start();
             _stream.Start();
             _resetReminder.Start();
-            Logger.Info("Tyria Planner HUD loaded.");
+            Logger.Info("Tyria Planner loaded.");
         }
         protected override void Unload()
         {

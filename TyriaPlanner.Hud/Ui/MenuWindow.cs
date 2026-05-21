@@ -412,14 +412,15 @@ namespace TyriaPlanner.Hud.Ui
             {
                 Parent = row,
                 Text = "Ã—",
-                Width = 28,
-                Height = 22,
-                Location = new Point(row.Width - 36, 4),
+                Width = 32,
+                Height = 24,
+                Location = new Point(row.Width - 40, 4),
             };
+            var rowToDispose = row;
             dismiss.Click += (_, __) =>
             {
                 _history.Remove(entry);
-                _ = RefreshAsync();
+                try { rowToDispose.Dispose(); } catch { }
             };
             new Label
             {
@@ -484,10 +485,14 @@ namespace TyriaPlanner.Hud.Ui
             var subtitleLine1 = BuildSubtitleLine1(ev);
             var subtitleLine2 = BuildSubtitleLine2(ev);
             bool hasLine2 = !string.IsNullOrWhiteSpace(subtitleLine2);
+            int line2WrapLines = hasLine2 ? EstimateWrapLines(subtitleLine2, _content.Width - 38, 7) : 0;
+            if (line2WrapLines < 1 && hasLine2) line2WrapLines = 1;
+            if (line2WrapLines > 2) line2WrapLines = 2;
             int titleY     = padTop;
             int subtitleY  = titleY + titleH + 2;
             int subtitle2Y = subtitleY + bodyH + 2;
-            int buttonY    = (hasLine2 ? subtitle2Y + bodyH : subtitleY + bodyH) + padMid;
+            int subtitle2H = bodyH * line2WrapLines + (line2WrapLines > 1 ? 2 : 0);
+            int buttonY    = (hasLine2 ? subtitle2Y + subtitle2H : subtitleY + bodyH) + padMid;
             int rowHeight  = buttonY + btnH + padBot;
             var row = new Panel
             {
@@ -549,8 +554,9 @@ namespace TyriaPlanner.Hud.Ui
                     TextColor = new Color(180, 180, 180),
                     Location = new Point(12, subtitle2Y),
                     Width = row.Width - 22,
-                    Height = bodyH + 2,
+                    Height = subtitle2H,
                     AutoSizeWidth = false,
+                    WrapText = true,
                 };
             }
             const int BtnW = 80;
@@ -658,10 +664,20 @@ namespace TyriaPlanner.Hud.Ui
                 Height = 26,
                 Location = new Point(x, y),
             };
-            btn.Click += (_, __) =>
+            btn.Click += async (_, __) =>
             {
-                Clipboard.Set($"/w {accountName} ");
-                FlashCopied(btn, "/whisper");
+                btn.Enabled = false;
+                try
+                {
+                    await WhisperOpener.OpenAsync(accountName);
+                }
+                finally
+                {
+                    GameService.Overlay.QueueMainThreadUpdate(_2 =>
+                    {
+                        try { btn.Enabled = true; } catch { }
+                    });
+                }
             };
             x += width + 6;
         }
@@ -701,7 +717,12 @@ namespace TyriaPlanner.Hud.Ui
             var commander = !string.IsNullOrWhiteSpace(ev.CommanderAccountName)
                 ? ev.CommanderAccountName
                 : ev.CommanderDisplayName ?? "?";
-            return $"{guild} Â· {commander} Â· {PrettyType(ev.Type)}";
+            var head = $"{guild} Â· {commander} Â· {PrettyType(ev.Type)}";
+            if (ev.MaxSignups > 0)
+            {
+                head += $" Â· {ev.SignupCount}/{ev.MaxSignups} signed up";
+            }
+            return head;
         }
         private static string BuildSubtitleLine2(EventBase ev)
         {
@@ -720,21 +741,34 @@ namespace TyriaPlanner.Hud.Ui
             }
             if (ev.BossSlugs != null && ev.BossSlugs.Length > 0)
             {
-                var bossPreview = string.Join(", ", System.Linq.Enumerable.Take(ev.BossSlugs, 4));
-                if (ev.BossSlugs.Length > 4) bossPreview += "...";
-                parts.Add(bossPreview);
+                parts.Add(string.Join(", ", ev.BossSlugs));
             }
             return string.Join(" Â· ", parts);
         }
         private static string BuildCountdown(EventBase ev)
         {
-            var minutes = (ev.ScheduledAt - DateTime.UtcNow).TotalMinutes;
-            if (minutes < 0) return "started";
-            if (minutes < 1) return "now";
-            if (minutes < 60) return $"in {(int)Math.Round(minutes)} m";
-            var hours = minutes / 60.0;
-            if (hours < 24) return $"in {hours:0.#} h";
-            return $"in {(int)(hours / 24)} d";
+            var totalMinutes = (ev.ScheduledAt - DateTime.UtcNow).TotalMinutes;
+            if (totalMinutes < 0) return "started";
+            if (totalMinutes < 1) return "now";
+            if (totalMinutes < 60) return $"in {(int)Math.Round(totalMinutes)}m";
+            if (totalMinutes < 24 * 60)
+            {
+                int h = (int)(totalMinutes / 60);
+                int m = (int)Math.Round(totalMinutes - h * 60);
+                if (m >= 60) { h += 1; m = 0; }
+                return m > 0 ? $"in {h}h {m}m" : $"in {h}h";
+            }
+            int d = (int)(totalMinutes / (24 * 60));
+            int rh = (int)Math.Round((totalMinutes - d * 24 * 60) / 60);
+            if (rh >= 24) { d += 1; rh = 0; }
+            return rh > 0 ? $"in {d}d {rh}h" : $"in {d}d";
+        }
+        private static int EstimateWrapLines(string text, int widthPx, int pxPerChar)
+        {
+            if (string.IsNullOrEmpty(text)) return 0;
+            int charsPerLine = Math.Max(1, widthPx / pxPerChar);
+            int lines = (int)Math.Ceiling((double)text.Length / charsPerLine);
+            return Math.Max(1, lines);
         }
         private static string PrettyType(string type)
         {

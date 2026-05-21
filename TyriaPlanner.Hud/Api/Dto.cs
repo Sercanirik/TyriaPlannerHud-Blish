@@ -26,6 +26,8 @@ namespace TyriaPlanner.Hud.Api
         [JsonProperty("commanderAccountName")]   public string CommanderAccountName { get; set; }
         [JsonProperty("commanderDisplayName")]   public string CommanderDisplayName { get; set; }
         [JsonProperty("commanderUsername")]      public string CommanderUsername { get; set; }
+        [JsonProperty("signupCount")]            public int SignupCount { get; set; }
+        [JsonProperty("maxSignups")]             public int MaxSignups { get; set; }
     }
     public sealed class KpRequirement
     {

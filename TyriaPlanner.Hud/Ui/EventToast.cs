@@ -154,10 +154,17 @@ namespace TyriaPlanner.Hud.Ui
                 Width = width,
                 Height = 26,
             };
-            btn.Click += (_, __) =>
+            btn.Click += async (_, __) =>
             {
-                Clipboard.Set($"/w {accountName} ");
-                FlashCopied(btn, "/whisper");
+                btn.Enabled = false;
+                try { await WhisperOpener.OpenAsync(accountName); }
+                finally
+                {
+                    GameService.Overlay.QueueMainThreadUpdate(_2 =>
+                    {
+                        try { btn.Enabled = true; } catch { }
+                    });
+                }
             };
             x += width + 6;
         }

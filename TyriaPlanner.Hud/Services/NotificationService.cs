@@ -124,10 +124,19 @@ namespace TyriaPlanner.Hud.Services
         }
         private static string FormatRelative(double minutes)
         {
+            if (minutes < 1) return "now";
             if (minutes < 60) return ((int)Math.Round(minutes)) + "m";
-            var hours = minutes / 60.0;
-            if (hours < 24) return hours.ToString("0.#") + "h";
-            return ((int)(hours / 24)) + "d";
+            if (minutes < 24 * 60)
+            {
+                int h = (int)(minutes / 60);
+                int m = (int)Math.Round(minutes - h * 60);
+                if (m >= 60) { h += 1; m = 0; }
+                return m > 0 ? $"{h}h {m}m" : $"{h}h";
+            }
+            int d = (int)(minutes / (24 * 60));
+            int rh = (int)Math.Round((minutes - d * 24 * 60) / 60);
+            if (rh >= 24) { d += 1; rh = 0; }
+            return rh > 0 ? $"{d}d {rh}h" : $"{d}d";
         }
         private static string BuildEventUrl(string id)
         {

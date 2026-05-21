@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Blish_HUD;
+using Blish_HUD.Controls.Extern;
+using Blish_HUD.Controls.Intern;
 namespace TyriaPlanner.Hud.Ui
 {
     public static class WhisperOpener
@@ -12,14 +14,22 @@ namespace TyriaPlanner.Hud.Ui
             try { previous = await ClipboardUtil.WindowsClipboardService.GetTextAsync().ConfigureAwait(false); } catch { }
             try
             {
-                await ClipboardUtil.WindowsClipboardService.SetTextAsync($"/w {accountName}").ConfigureAwait(false);
-                await Task.Delay(70).ConfigureAwait(false);
-                WindowsInput.Enter();
-                await Task.Delay(110).ConfigureAwait(false);
-                WindowsInput.CtrlV();
-                await Task.Delay(140).ConfigureAwait(false);
-                WindowsInput.Tab();
-                await Task.Delay(70).ConfigureAwait(false);
+                await ClipboardUtil.WindowsClipboardService.SetTextAsync($"/w {accountName} ").ConfigureAwait(false);
+                await Task.Delay(60).ConfigureAwait(false);
+                if (!GameService.Gw2Mumble.UI.IsTextInputFocused)
+                {
+                    Keyboard.Stroke(VirtualKeyShort.RETURN);
+                    for (int i = 0; i < 25 && !GameService.Gw2Mumble.UI.IsTextInputFocused; i++)
+                    {
+                        await Task.Delay(20).ConfigureAwait(false);
+                    }
+                }
+                Keyboard.Press(VirtualKeyShort.CONTROL);
+                await Task.Delay(20).ConfigureAwait(false);
+                Keyboard.Stroke(VirtualKeyShort.KEY_V);
+                await Task.Delay(20).ConfigureAwait(false);
+                Keyboard.Release(VirtualKeyShort.CONTROL);
+                await Task.Delay(80).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
