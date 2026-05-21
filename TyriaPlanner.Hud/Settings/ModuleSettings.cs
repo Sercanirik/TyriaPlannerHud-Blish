@@ -40,7 +40,7 @@ namespace TyriaPlanner.Hud.Settings
                 "Gw2ApiKey",
                 string.Empty,
                 () => "GW2 API key",
-                () => "Paste the same GW2 API key you saved on your Tyria Planner profile. The addon exchanges it for a scoped token in the background.");
+                () => "Must be the SAME GW2 API key you already saved on your tyriaplanner.com profile Â· the server only recognises keys it has on file. Required ArenaNet permissions: account, characters, progression. Optional: builds, wallet, inventories (for the full website experience). Generate at https://account.arena.net/applications. The addon sends this key to Tyria Planner exactly once Â· after that, every poll uses a scoped, revocable bearer.");
             CachedBearer = root.DefineSetting(
                 "CachedBearer",
                 string.Empty,

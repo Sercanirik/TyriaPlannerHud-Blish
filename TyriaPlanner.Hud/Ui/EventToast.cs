@@ -173,9 +173,8 @@ namespace TyriaPlanner.Hud.Ui
             };
             btn.Click += (_, __) =>
             {
-                Clipboard.Set(url);
-                try { Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true }); }
-                catch (Exception ex) { Logger.GetLogger<EventToast>().Warn(ex, "Voice URL launch failed."); }
+                if (SafeUrl.IsAllowed(url)) Clipboard.Set(url);
+                SafeUrl.Open(url);
                 FlashCopied(btn, "Voice");
             };
             x += width + 6;
@@ -192,19 +191,8 @@ namespace TyriaPlanner.Hud.Ui
             };
             open.Click += (_, __) =>
             {
-                Clipboard.Set(_eventBaseUrl);
-                try
-                {
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = _eventBaseUrl,
-                        UseShellExecute = true,
-                    });
-                }
-                catch (Exception ex)
-                {
-                    Logger.GetLogger<EventToast>().Warn(ex, "Browser launch failed.");
-                }
+                if (SafeUrl.IsAllowed(_eventBaseUrl)) Clipboard.Set(_eventBaseUrl);
+                SafeUrl.Open(_eventBaseUrl);
                 FlashCopied(open, "Open");
             };
             x += open.Width + 6;

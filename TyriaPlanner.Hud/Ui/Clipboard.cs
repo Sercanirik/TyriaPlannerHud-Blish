@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Blish_HUD;
 namespace TyriaPlanner.Hud.Ui
@@ -25,6 +26,15 @@ namespace TyriaPlanner.Hud.Ui
             {
                 Logger.GetLogger(typeof(Clipboard)).Warn(ex, "Clipboard write threw.");
             }
+        }
+        public static async Task SetAndRestoreAsync(string text, TimeSpan restoreAfter)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            string previous = string.Empty;
+            try { previous = await ClipboardUtil.WindowsClipboardService.GetTextAsync().ConfigureAwait(false); } catch { }
+            try { await ClipboardUtil.WindowsClipboardService.SetTextAsync(text).ConfigureAwait(false); } catch { }
+            try { await Task.Delay(restoreAfter).ConfigureAwait(false); } catch { }
+            try { await ClipboardUtil.WindowsClipboardService.SetTextAsync(previous ?? string.Empty).ConfigureAwait(false); } catch { }
         }
     }
 }

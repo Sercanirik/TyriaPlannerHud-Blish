@@ -447,9 +447,8 @@ namespace TyriaPlanner.Hud.Ui
             };
             open.Click += (_, __) =>
             {
-                Clipboard.Set(openUrl);
-                try { Process.Start(new ProcessStartInfo { FileName = openUrl, UseShellExecute = true }); }
-                catch (Exception ex) { Logger.GetLogger<MenuWindow>().Warn(ex, "Browser open failed."); }
+                if (SafeUrl.IsAllowed(openUrl)) Clipboard.Set(openUrl);
+                SafeUrl.Open(openUrl);
                 FlashCopied(open, "Open");
             };
         }
@@ -465,9 +464,8 @@ namespace TyriaPlanner.Hud.Ui
             };
             btn.Click += (_, __) =>
             {
-                Clipboard.Set(url);
-                try { Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true }); }
-                catch (Exception ex) { Logger.GetLogger<MenuWindow>().Warn(ex, "Voice URL launch failed."); }
+                if (SafeUrl.IsAllowed(url)) Clipboard.Set(url);
+                SafeUrl.Open(url);
                 FlashCopied(btn, "Voice");
             };
             x += btn.Width + 6;
@@ -525,7 +523,26 @@ namespace TyriaPlanner.Hud.Ui
             var commander = !string.IsNullOrWhiteSpace(ev.CommanderAccountName)
                 ? ev.CommanderAccountName
                 : ev.CommanderDisplayName ?? "?";
-            return $"{guild} Â· {commander} Â· {PrettyType(ev.Type)}";
+            var parts = new System.Collections.Generic.List<string> { guild, commander, PrettyType(ev.Type) };
+            if (ev is MySignup ms && ms.SignupCharacter != null)
+            {
+                var spec = !string.IsNullOrWhiteSpace(ms.SignupCharacter.EliteSpec)
+                    ? ms.SignupCharacter.EliteSpec
+                    : ms.SignupCharacter.Profession;
+                parts.Add($"as {ms.SignupCharacter.Name} ({spec})");
+            }
+            if (ev.KpRequirement != null && ev.KpRequirement.Amount > 0)
+            {
+                var modeShort = ev.KpRequirement.Mode == "average" ? "avg" : "min";
+                parts.Add($"KP {modeShort} {ev.KpRequirement.Amount}");
+            }
+            if (ev.BossSlugs != null && ev.BossSlugs.Length > 0)
+            {
+                var bossPreview = string.Join(", ", System.Linq.Enumerable.Take(ev.BossSlugs, 4));
+                if (ev.BossSlugs.Length > 4) bossPreview += "...";
+                parts.Add(bossPreview);
+            }
+            return string.Join(" Â· ", parts);
         }
         private static string BuildCountdown(EventBase ev)
         {

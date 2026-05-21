@@ -19,11 +19,24 @@ namespace TyriaPlanner.Hud.Api
         [JsonProperty("wvwMap")]                 public string WvwMap { get; set; }
         [JsonProperty("voiceChannelUrl")]        public string VoiceChannelUrl { get; set; }
         [JsonProperty("isRecurring")]            public bool IsRecurring { get; set; }
+        [JsonProperty("bossSlugs")]              public string[] BossSlugs { get; set; } = Array.Empty<string>();
+        [JsonProperty("kpRequirement")]          public KpRequirement KpRequirement { get; set; }
         [JsonProperty("guildName")]              public string GuildName { get; set; }
         [JsonProperty("guildTag")]               public string GuildTag { get; set; }
         [JsonProperty("commanderAccountName")]   public string CommanderAccountName { get; set; }
         [JsonProperty("commanderDisplayName")]   public string CommanderDisplayName { get; set; }
         [JsonProperty("commanderUsername")]      public string CommanderUsername { get; set; }
+    }
+    public sealed class KpRequirement
+    {
+        [JsonProperty("amount")] public int Amount { get; set; }
+        [JsonProperty("mode")]   public string Mode { get; set; }
+    }
+    public sealed class SignupCharacter
+    {
+        [JsonProperty("name")]       public string Name { get; set; }
+        [JsonProperty("profession")] public string Profession { get; set; }
+        [JsonProperty("eliteSpec")]  public string EliteSpec { get; set; }
     }
     public sealed class MySignup : EventBase
     {
@@ -31,6 +44,7 @@ namespace TyriaPlanner.Hud.Api
         [JsonProperty("checkinStatus")]          public string CheckinStatus { get; set; }
         [JsonProperty("approvalStatus")]         public string ApprovalStatus { get; set; }
         [JsonProperty("isBench")]                public bool IsBench { get; set; }
+        [JsonProperty("signupCharacter")]        public SignupCharacter SignupCharacter { get; set; }
     }
     public sealed class NewGuildEvent : EventBase
     {
