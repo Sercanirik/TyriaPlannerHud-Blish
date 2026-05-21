@@ -17,8 +17,6 @@ namespace TyriaPlanner.Hud.Services
         private Task _loop;
         private readonly HashSet<string> _shownReminders = new HashSet<string>();
         private readonly HashSet<string> _shownGuildEvents = new HashSet<string>();
-        private readonly HashSet<string> _seenSignups = new HashSet<string>();
-        private bool _seenSignupsSeeded;
         private DateTimeOffset? _lastSeen;
         public PollingService(ApiClient api, ModuleSettings settings, NotificationService notify)
         {
@@ -50,7 +48,7 @@ namespace TyriaPlanner.Hud.Services
                 {
                     await PollOnceAsync(cancel).ConfigureAwait(false);
                 }
-                catch (TaskCanceledException) {  }
+                catch (TaskCanceledException) { }
                 catch (Exception ex)
                 {
                     Logger.Warn(ex, "Tyria Planner poll failed; will retry next cycle.");
@@ -91,21 +89,6 @@ namespace TyriaPlanner.Hud.Services
             _lastSeen = resp.ServerTime;
             if (_settings.NotifyOwnSignups.Value && resp.MySignups != null)
             {
-                if (!_seenSignupsSeeded)
-                {
-                    foreach (var s in resp.MySignups) _seenSignups.Add(s.Id);
-                    _seenSignupsSeeded = true;
-                }
-                else
-                {
-                    foreach (var signup in resp.MySignups)
-                    {
-                        if (_seenSignups.Add(signup.Id))
-                        {
-                            _notify.PostSignedUpToast(signup);
-                        }
-                    }
-                }
                 foreach (var signup in resp.MySignups)
                 {
                     HandleSignupTriggers(signup);
@@ -130,35 +113,22 @@ namespace TyriaPlanner.Hud.Services
                 var key = signup.Id + "|starting";
                 if (_shownReminders.Add(key))
                 {
-                    _notify.PostSignupReminder(signup, 0);
-                    return;   
+                    _notify.PostStartingToast(signup);
+                    Logger.Info("Starting toast Â· event={0} minutesUntil={1:0.#}", signup.Title, minutesUntil);
                 }
+                return;
             }
-            var checkinAt = signup.CheckinReminderMinutes ?? 0;
-            if (checkinAt > 0 && checkinAt != 5 && checkinAt != 15 && checkinAt != 30
-                && minutesUntil <= checkinAt && minutesUntil > 0)
+            var checkinAt = signup.CheckinReminderMinutes ?? 30;
+            if (checkinAt > 0 && minutesUntil <= checkinAt && minutesUntil > 1)
             {
                 var key = signup.Id + "|checkin";
                 if (_shownReminders.Add(key))
                 {
                     _notify.PostCheckinOpenToast(signup);
+                    Logger.Info("Check-in toast Â· event={0} minutesUntil={1:0.#} window={2}",
+                        signup.Title, minutesUntil, checkinAt);
                 }
             }
-            if (minutesUntil < 0) return;
-            int? toFire = null;
-            foreach (var t in new[] { 5, 15, 30 })
-            {
-                if (minutesUntil > t) continue;
-                var key = signup.Id + "|t" + t;
-                if (_shownReminders.Contains(key)) continue;
-                toFire = t;
-                break;
-            }
-            if (toFire == null) return;
-            _shownReminders.Add(signup.Id + "|t" + toFire);
-            _notify.PostSignupReminder(signup, toFire.Value);
-            Logger.Info("Reminder fired Â· event={0} minutesUntil={1:0.#} threshold={2}",
-                signup.Title, minutesUntil, toFire);
         }
         public void Dispose()
         {

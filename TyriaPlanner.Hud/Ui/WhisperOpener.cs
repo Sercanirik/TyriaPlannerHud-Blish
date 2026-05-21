@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Blish_HUD;
-using Blish_HUD.Controls.Extern;
-using Blish_HUD.Controls.Intern;
 namespace TyriaPlanner.Hud.Ui
 {
     public static class WhisperOpener
@@ -15,15 +13,13 @@ namespace TyriaPlanner.Hud.Ui
             try
             {
                 await ClipboardUtil.WindowsClipboardService.SetTextAsync($"/w {accountName}").ConfigureAwait(false);
-                await Task.Delay(60).ConfigureAwait(false);
-                Keyboard.Stroke(VirtualKeyShort.RETURN);
-                await Task.Delay(90).ConfigureAwait(false);
-                Keyboard.Press(VirtualKeyShort.LCONTROL);
-                Keyboard.Stroke(VirtualKeyShort.KEY_V);
-                Keyboard.Release(VirtualKeyShort.LCONTROL);
-                await Task.Delay(120).ConfigureAwait(false);
-                Keyboard.Stroke(VirtualKeyShort.TAB);
-                await Task.Delay(60).ConfigureAwait(false);
+                await Task.Delay(70).ConfigureAwait(false);
+                WindowsInput.Enter();
+                await Task.Delay(110).ConfigureAwait(false);
+                WindowsInput.CtrlV();
+                await Task.Delay(140).ConfigureAwait(false);
+                WindowsInput.Tab();
+                await Task.Delay(70).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

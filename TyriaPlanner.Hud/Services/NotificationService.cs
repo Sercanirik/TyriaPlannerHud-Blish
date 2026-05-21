@@ -16,39 +16,10 @@ namespace TyriaPlanner.Hud.Services
             _stack = stack;
             _settings = settings;
         }
-        public void PostSignupReminder(MySignup signup, int minutesBefore)
+        public void PostCheckinOpenToast(MySignup signup)
         {
-            string title;
-            if (minutesBefore <= 0)        title = $"Starting now Â· {Pretty(signup.Title, signup.Type)}";
-            else if (minutesBefore == 1)   title = $"Starting in 1 min Â· {Pretty(signup.Title, signup.Type)}";
-            else                            title = $"{minutesBefore} min Â· {Pretty(signup.Title, signup.Type)}";
-            var subtitle = signup.GuildName != null
-                ? $"{signup.GuildName} Â· commander {Commander(signup)}"
-                : $"Public Â· commander {Commander(signup)}";
-            _stack.Push(new EventToast(
-                settings: _settings,
-                title: title,
-                subtitle: subtitle,
-                accent: ToastAccent.Reminder,
-                eventType: signup.Type,
-                commanderAccountName: signup.CommanderAccountName,
-                eventId: signup.Id,
-                eventBaseUrl: BuildEventUrl(signup.Id),
-                showSqjoin: true,                  
-                showJoinFromAppHint: false));
-        }
-        public void PostSignedUpToast(MySignup signup)
-        {
-            var minutes = (signup.ScheduledAt - DateTime.UtcNow).TotalMinutes;
-            string when;
-            if (minutes < 0) when = "started";
-            else if (minutes < 60) when = $"in {(int)Math.Max(0, Math.Round(minutes))} min";
-            else if (minutes < 24 * 60) when = $"in {(minutes / 60.0):0.#} h";
-            else when = $"in {(int)(minutes / 60 / 24)} d";
-            var title = $"Signed up Â· {Pretty(signup.Title, signup.Type)}";
-            var subtitle = signup.GuildName != null
-                ? $"{signup.GuildName} Â· {when} Â· commander {Commander(signup)}"
-                : $"Public Â· {when} Â· commander {Commander(signup)}";
+            var title = $"Check-in time Â· {Pretty(signup.Title, signup.Type)}";
+            var subtitle = "Open the Tyria Planner app and check in";
             _stack.Push(new EventToast(
                 settings: _settings,
                 title: title,
@@ -61,12 +32,12 @@ namespace TyriaPlanner.Hud.Services
                 showSqjoin: true,
                 showJoinFromAppHint: false));
         }
-        public void PostCheckinOpenToast(MySignup signup)
+        public void PostStartingToast(MySignup signup)
         {
-            var title = $"Check-in open Â· {Pretty(signup.Title, signup.Type)}";
+            var title = $"Starting now Â· {Pretty(signup.Title, signup.Type)}";
             var subtitle = signup.GuildName != null
-                ? $"{signup.GuildName} Â· mark yourself ready in the app"
-                : "Mark yourself ready in the app";
+                ? $"{signup.GuildName} Â· commander {Commander(signup)}"
+                : $"Public Â· commander {Commander(signup)}";
             _stack.Push(new EventToast(
                 settings: _settings,
                 title: title,
@@ -95,7 +66,7 @@ namespace TyriaPlanner.Hud.Services
                 commanderAccountName: ev.CommanderAccountName,
                 eventId: ev.Id,
                 eventBaseUrl: BuildEventUrl(ev.Id),
-                showSqjoin: false,                 
+                showSqjoin: false,
                 showJoinFromAppHint: true));
         }
         private static string Pretty(string title, string type)
