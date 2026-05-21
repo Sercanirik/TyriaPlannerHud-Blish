@@ -18,23 +18,23 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - run: dotnet restore TyriaPlanner.Hud.csproj
-      - run: dotnet build TyriaPlanner.Hud.csproj -c Release --no-restore
+      - run: dotnet restore TyriaPlanner.Hud/TyriaPlanner.Hud.csproj
+      - run: dotnet build TyriaPlanner.Hud/TyriaPlanner.Hud.csproj -c Release --no-restore
       - name: Rename .bhm with namespace and version
         shell: pwsh
         run: |
-          $manifest = Get-Content "manifest.json" | ConvertFrom-Json
+          $manifest = Get-Content "TyriaPlanner.Hud/manifest.json" | ConvertFrom-Json
           $name = "$($manifest.namespace)-$($manifest.version).bhm"
-          Copy-Item "bin/Release/TyriaPlanner.Hud.bhm" "bin/Release/$name"
+          Copy-Item "TyriaPlanner.Hud/bin/Release/TyriaPlanner.Hud.bhm" "TyriaPlanner.Hud/bin/Release/$name"
           Write-Host "Built: $name"
       - uses: actions/upload-artifact@v4
         with:
           name: TyriaPlanner.Hud
-          path: bin/Release/*.bhm
+          path: TyriaPlanner.Hud/bin/Release/*.bhm
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            bin/Release/TyriaPlanner.Hud.bhm
-            bin/Release/com.tyriaplanner.hud-*.bhm
+            TyriaPlanner.Hud/bin/Release/TyriaPlanner.Hud.bhm
+            TyriaPlanner.Hud/bin/Release/com.tyriaplanner.hud-*.bhm
