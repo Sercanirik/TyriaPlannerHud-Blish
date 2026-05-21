@@ -404,9 +404,22 @@ namespace TyriaPlanner.Hud.Ui
                 Font = titleFont,
                 TextColor = typeColor,
                 Location = new Point(10, 6),
-                Width = row.Width - 20,
+                Width = row.Width - 50,
                 Height = (int)titleFont.LineHeight + 2,
                 AutoSizeWidth = false,
+            };
+            var dismiss = new StandardButton
+            {
+                Parent = row,
+                Text = "Ã—",
+                Width = 28,
+                Height = 22,
+                Location = new Point(row.Width - 36, 4),
+            };
+            dismiss.Click += (_, __) =>
+            {
+                _history.Remove(entry);
+                _ = RefreshAsync();
             };
             new Label
             {
@@ -465,13 +478,17 @@ namespace TyriaPlanner.Hud.Ui
             int titleH = (int)titleFont.LineHeight;
             int bodyH  = (int)bodyFont.LineHeight;
             int padTop = 8;
-            int padMid = 6;     
+            int padMid = 6;
             int btnH   = 26;
             int padBot = 8;
-            int titleY    = padTop;
-            int subtitleY = titleY + titleH + 2;
-            int buttonY   = subtitleY + bodyH + padMid;
-            int rowHeight = buttonY + btnH + padBot;
+            var subtitleLine1 = BuildSubtitleLine1(ev);
+            var subtitleLine2 = BuildSubtitleLine2(ev);
+            bool hasLine2 = !string.IsNullOrWhiteSpace(subtitleLine2);
+            int titleY     = padTop;
+            int subtitleY  = titleY + titleH + 2;
+            int subtitle2Y = subtitleY + bodyH + 2;
+            int buttonY    = (hasLine2 ? subtitle2Y + bodyH : subtitleY + bodyH) + padMid;
+            int rowHeight  = buttonY + btnH + padBot;
             var row = new Panel
             {
                 Parent = _content,
@@ -514,7 +531,7 @@ namespace TyriaPlanner.Hud.Ui
             new Label
             {
                 Parent = row,
-                Text = BuildSubtitle(ev),
+                Text = subtitleLine1,
                 Font = bodyFont,
                 TextColor = new Color(210, 210, 210),
                 Location = new Point(12, subtitleY),
@@ -522,30 +539,47 @@ namespace TyriaPlanner.Hud.Ui
                 Height = bodyH + 2,
                 AutoSizeWidth = false,
             };
+            if (hasLine2)
+            {
+                new Label
+                {
+                    Parent = row,
+                    Text = subtitleLine2,
+                    Font = bodyFont,
+                    TextColor = new Color(180, 180, 180),
+                    Location = new Point(12, subtitle2Y),
+                    Width = row.Width - 22,
+                    Height = bodyH + 2,
+                    AutoSizeWidth = false,
+                };
+            }
+            const int BtnW = 80;
             var x = 12;
             var commander = ev.CommanderAccountName;
             if (!string.IsNullOrWhiteSpace(commander))
             {
                 if (showSqjoin)
                 {
-                    AddCopyButton(row, "/sqjoin", $"/sqjoin {commander}", ref x, buttonY, 84);
+                    AddCopyButton(row, "/sqjoin", $"/sqjoin {commander}", ref x, buttonY, BtnW);
                 }
-                AddWhisperButton(row, commander, ref x, buttonY, 84);
+                AddWhisperButton(row, commander, ref x, buttonY, BtnW);
             }
             if (!string.IsNullOrWhiteSpace(ev.VoiceChannelUrl))
             {
-                AddVoiceButton(row, ev.VoiceChannelUrl, ref x, buttonY);
+                AddVoiceButton(row, ev.VoiceChannelUrl, ref x, buttonY, BtnW);
             }
-            if (ev is MySignup signup && signup.CheckinStatus == "pending")
+            if (ev is MySignup signup
+                && signup.CheckinStatus == "pending"
+                && signup.ScheduledAt > DateTime.UtcNow)
             {
-                AddCheckinButton(row, signup.Id, ref x, buttonY);
+                AddCheckinButton(row, signup.Id, ref x, buttonY, BtnW);
             }
             var openUrl = $"https://tyriaplanner.com/event/{ev.Id}";
             var open = new StandardButton
             {
                 Parent = row,
                 Text = "Open",
-                Width = 70,
+                Width = BtnW,
                 Height = 24,
                 Location = new Point(x, buttonY),
             };
@@ -556,13 +590,13 @@ namespace TyriaPlanner.Hud.Ui
                 FlashCopied(open, "Open");
             };
         }
-        private void AddCheckinButton(Container parent, string eventId, ref int x, int y)
+        private void AddCheckinButton(Container parent, string eventId, ref int x, int y, int width)
         {
             var btn = new StandardButton
             {
                 Parent = parent,
                 Text = "Check in",
-                Width = 86,
+                Width = width,
                 Height = 24,
                 Location = new Point(x, y),
             };
@@ -596,13 +630,13 @@ namespace TyriaPlanner.Hud.Ui
             };
             x += btn.Width + 6;
         }
-        private static void AddVoiceButton(Container parent, string url, ref int x, int y)
+        private static void AddVoiceButton(Container parent, string url, ref int x, int y, int width)
         {
             var btn = new StandardButton
             {
                 Parent = parent,
                 Text = "Voice",
-                Width = 64,
+                Width = width,
                 Height = 24,
                 Location = new Point(x, y),
             };
@@ -626,7 +660,7 @@ namespace TyriaPlanner.Hud.Ui
             };
             btn.Click += (_, __) =>
             {
-                _ = WhisperOpener.OpenAsync(accountName);
+                Clipboard.Set($"/w {accountName} ");
                 FlashCopied(btn, "/whisper");
             };
             x += width + 6;
@@ -661,13 +695,17 @@ namespace TyriaPlanner.Hud.Ui
                 t?.Dispose();
             }, null, TimeSpan.FromMilliseconds(1400), Timeout.InfiniteTimeSpan);
         }
-        private static string BuildSubtitle(EventBase ev)
+        private static string BuildSubtitleLine1(EventBase ev)
         {
             var guild = string.IsNullOrWhiteSpace(ev.GuildName) ? "Public" : ev.GuildName;
             var commander = !string.IsNullOrWhiteSpace(ev.CommanderAccountName)
                 ? ev.CommanderAccountName
                 : ev.CommanderDisplayName ?? "?";
-            var parts = new System.Collections.Generic.List<string> { guild, commander, PrettyType(ev.Type) };
+            return $"{guild} Â· {commander} Â· {PrettyType(ev.Type)}";
+        }
+        private static string BuildSubtitleLine2(EventBase ev)
+        {
+            var parts = new System.Collections.Generic.List<string>();
             if (ev is MySignup ms && ms.SignupCharacter != null)
             {
                 var spec = !string.IsNullOrWhiteSpace(ms.SignupCharacter.EliteSpec)

@@ -156,7 +156,7 @@ namespace TyriaPlanner.Hud.Ui
             };
             btn.Click += (_, __) =>
             {
-                _ = WhisperOpener.OpenAsync(accountName);
+                Clipboard.Set($"/w {accountName} ");
                 FlashCopied(btn, "/whisper");
             };
             x += width + 6;

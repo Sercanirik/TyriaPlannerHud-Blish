@@ -28,6 +28,14 @@ namespace TyriaPlanner.Hud.Services
         {
             lock (_lock) { return _entries.ToList(); }
         }
+        public void Remove(HistoryEntry entry)
+        {
+            if (entry == null) return;
+            lock (_lock)
+            {
+                _entries.Remove(entry);
+            }
+        }
     }
     public sealed class HistoryEntry
     {
