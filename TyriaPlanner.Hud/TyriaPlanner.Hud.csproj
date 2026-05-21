@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>TyriaPlanner.Hud</RootNamespace>
+    <AssemblyName>TyriaPlanner.Hud</AssemblyName>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Official Blish HUD NuGet package · pulls in MonoGame.Framework
+         transitively. ExcludeAssets="runtime" keeps Blish HUD's DLLs out of
+         our build output (the host process already loads them); we just need
+         the compile-time refs. PrivateAssets="All" makes the dependency
+         non-transitive so consumers of this project don't pick it up. -->
+    <PackageReference Include="BlishHUD" Version="1.3.0" PrivateAssets="All" ExcludeAssets="runtime" />
+    <!-- Newtonsoft is also provided by Blish HUD at runtime · only need
+         compile-time access here. -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" PrivateAssets="All" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <!-- MEF attributes (ImportingConstructor, Export, etc.) live in the
+       .NET Framework's System.ComponentModel.Composition assembly. The
+       BlishHUD package doesn't surface it as a compile-time ref, so we
+       reference the framework assembly directly. -->
+  <ItemGroup>
+    <Reference Include="System.ComponentModel.Composition" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="manifest.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\README.md">
+      <Link>README.md</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- BlishHUD's NuGet build targets auto-package the module into a .bhm
+       (renamed zip) at bin/Release/<AssemblyName>.bhm after each Release
+       build, so no custom packaging step is needed. -->
+
+</Project>

@@ -1,0 +1,81 @@
+﻿using Blish_HUD;
+using Blish_HUD.Content;
+using Blish_HUD.Settings;
+using Microsoft.Xna.Framework.Graphics;
+using MonoGame.Extended.BitmapFonts;
+namespace TyriaPlanner.Hud.Settings
+{
+    public enum FontSizePreference
+    {
+        Small,
+        Medium,
+        Large,
+    }
+    public sealed class ModuleSettings
+    {
+        public SettingEntry<string> ApiBaseUrl { get; }
+        public SettingEntry<string> Gw2ApiKey { get; }
+        public SettingEntry<string> CachedBearer { get; }       
+        public SettingEntry<bool>   NotifyOwnSignups { get; }
+        public SettingEntry<bool>   NotifyNewGuildEvents { get; }
+        public SettingEntry<int>    PollIntervalSeconds { get; }
+        public SettingEntry<FontSizePreference> FontSize { get; }
+        public ModuleSettings(SettingCollection root)
+        {
+            ApiBaseUrl = root.DefineSetting(
+                "ApiBaseUrl",
+                "https://tyriaplanner.com",
+                () => "API base URL",
+                () => "Leave the default unless you're testing against a dev server.");
+            Gw2ApiKey = root.DefineSetting(
+                "Gw2ApiKey",
+                string.Empty,
+                () => "GW2 API key",
+                () => "Paste the same GW2 API key you saved on your Tyria Planner profile. The addon exchanges it for a scoped token in the background.");
+            CachedBearer = root.DefineSetting(
+                "CachedBearer",
+                string.Empty,
+                null,
+                null);
+            NotifyOwnSignups = root.DefineSetting(
+                "NotifyOwnSignups",
+                true,
+                () => "Notify upcoming signups",
+                () => "Pops a toast for events you signed up to as they approach.");
+            NotifyNewGuildEvents = root.DefineSetting(
+                "NotifyNewGuildEvents",
+                true,
+                () => "Notify new guild events",
+                () => "Pops a toast when one of your guilds posts a new event.");
+            PollIntervalSeconds = root.DefineSetting(
+                "PollIntervalSeconds",
+                45,
+                () => "Poll interval (seconds)",
+                () => "How often the module checks for updates. 30-120 is sane; under 30 may rate-limit.");
+            PollIntervalSeconds.SetRange(30, 300);
+            FontSize = root.DefineSetting(
+                "FontSize",
+                FontSizePreference.Medium,
+                () => "Font size",
+                () => "Bumps all text in the menu and toasts by one or two notches. Useful on 4K or for far-away seating.");
+        }
+        public BitmapFont TitleFont()
+        {
+            switch (FontSize.Value)
+            {
+                case FontSizePreference.Small:  return GameService.Content.DefaultFont14;
+                case FontSizePreference.Large:  return GameService.Content.DefaultFont18;
+                default:                         return GameService.Content.DefaultFont16;
+            }
+        }
+        public BitmapFont BodyFont()
+        {
+            switch (FontSize.Value)
+            {
+                case FontSizePreference.Small:  return GameService.Content.DefaultFont12;
+                case FontSizePreference.Large:  return GameService.Content.DefaultFont16;
+                default:                         return GameService.Content.DefaultFont14;
+            }
+        }
+    }
+}
