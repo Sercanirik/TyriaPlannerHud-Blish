@@ -3,7 +3,7 @@
   "name": "Tyria Planner",
   "namespace": "com.tyriaplanner.hud",
   "description": "Shows in-game popups for your upcoming Tyria Planner signups and new guild events. Click to /sqjoin or /whisper the commander.",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "package": "TyriaPlanner.Hud.dll",
   "url": "https://tyriaplanner.com",
   "author": {
@@ -11,6 +11,6 @@
     "url": "https://tyriaplanner.com"
   },
   "dependencies": {
-    "bh.blishhud": "^1.0.0"
+    "bh.blishhud": ">=1.0.0"
   }
 }
