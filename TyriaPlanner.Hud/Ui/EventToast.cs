@@ -164,6 +164,7 @@ namespace TyriaPlanner.Hud.Ui
                     {
                         try { btn.Enabled = true; } catch { }
                     });
+                    FlashCopied(btn, "/whisper");
                 }
             };
             x += width + 6;
