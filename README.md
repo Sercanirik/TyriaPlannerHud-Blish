@@ -1,4 +1,4 @@
-# Tyria Planner HUD · Blish HUD module
+# Tyria Planner · Blish HUD module
 
 In-game popups for upcoming signups and brand-new guild events scheduled on [Tyria Planner](https://tyriaplanner.com). Each notification carries buttons for `/sqjoin`, `/whisper`, and opening the event page in your browser.
 
@@ -34,7 +34,11 @@ Output: `TyriaPlanner.Hud/bin/Release/TyriaPlanner.Hud.bhm`.
 
 ## Scope
 
-The bearer is scoped `addon:read` · it can only read your upcoming events and the guild events you have access to. It cannot modify anything.
+The bearer carries two scopes:
+- `addon:read` · list your upcoming signups, your guilds' new events, and the officer approval queue for guilds where you're an officer
+- `addon:write` · only powers two user-initiated actions: marking your own signup as "checked in", and approving/rejecting pending signups in guilds where you're an officer/owner. It cannot modify any other state and cannot touch other users' data.
+
+The bearer expires after 90 days. You can revoke it at any time from your Tyria Planner profile, which immediately stops the addon from talking to the server.
 
 ## License
 
