@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Blish_HUD;
 using Blish_HUD.Controls;
+using Blish_HUD.Graphics.UI;
 using Blish_HUD.Modules;
 using Blish_HUD.Modules.Managers;
 using Blish_HUD.Settings;
@@ -85,6 +86,10 @@ namespace TyriaPlanner.Hud
         }
         protected override void Update(Microsoft.Xna.Framework.GameTime gameTime)
         {
+        }
+        public override IView GetSettingsView()
+        {
+            return new BrandedSettingsView(_settings.Root, _iconTexture);
         }
     }
 }

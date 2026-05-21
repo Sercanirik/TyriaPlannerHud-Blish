@@ -26,6 +26,7 @@ namespace TyriaPlanner.Hud.Settings
     }
     public sealed class ModuleSettings
     {
+        public SettingCollection Root { get; }
         public SettingEntry<string> ApiBaseUrl { get; }
         public SettingEntry<string> Gw2ApiKey { get; }
         public SettingEntry<string> CachedBearer { get; }       
@@ -41,6 +42,7 @@ namespace TyriaPlanner.Hud.Settings
         public SettingEntry<ColorThemePreference> ColorTheme { get; }
         public ModuleSettings(SettingCollection root)
         {
+            Root = root;
             ApiBaseUrl = root.DefineSetting(
                 "ApiBaseUrl",
                 "https://tyriaplanner.com",
