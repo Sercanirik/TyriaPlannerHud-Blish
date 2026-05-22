@@ -1,15 +1,5 @@
 bin/
-obj/*
-**/obj/*
-# SSRD's build pipeline runs `dotnet build --no-restore` and bails with
-# NETSDK1004 when these NuGet hint files are missing. Freesnöw confirmed
-# committing them works for other modules · these are the only obj/
-# files we keep tracked.
-!**/obj/project.assets.json
-!**/obj/project.nuget.cache
-!**/obj/*.nuget.dgspec.json
-!**/obj/*.nuget.g.props
-!**/obj/*.nuget.g.targets
+obj/
 .vs/
 *.user
 *.suo

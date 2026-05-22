@@ -1,9 +1,13 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using TyriaPlanner.Hud.Settings;
+
 namespace TyriaPlanner.Hud.Ui
 {
     public static class EventColors
     {
+        // Theme is read on each call · the dropdown live-updates without a
+        // module reload because every label/panel pulls the color afresh on
+        // its next layout pass.
         public static Color For(string type, ColorThemePreference theme = ColorThemePreference.Default)
         {
             switch (theme)
@@ -18,6 +22,7 @@ namespace TyriaPlanner.Hud.Ui
                     return Default(type);
             }
         }
+
         private static Color Default(string type)
         {
             switch (type)
@@ -30,6 +35,7 @@ namespace TyriaPlanner.Hud.Ui
                 default:           return new Color(180, 180, 180);
             }
         }
+
         private static Color HighContrast(string type)
         {
             switch (type)
@@ -42,6 +48,7 @@ namespace TyriaPlanner.Hud.Ui
                 default:           return new Color(220, 220, 220);
             }
         }
+
         private static Color Pastel(string type)
         {
             switch (type)
@@ -54,6 +61,7 @@ namespace TyriaPlanner.Hud.Ui
                 default:           return new Color(200, 200, 200);
             }
         }
+
         private static Color Monochrome(string type)
         {
             return new Color(218, 165, 32);

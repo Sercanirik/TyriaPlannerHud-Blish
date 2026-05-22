@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -6,12 +6,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using Blish_HUD;
 using Newtonsoft.Json;
+
 namespace TyriaPlanner.Hud.Api
 {
     public sealed class ApiClient : IDisposable
     {
         private static readonly Logger Logger = Logger.GetLogger<ApiClient>();
+
         private readonly HttpClient _http;
+
         public ApiClient()
         {
             _http = new HttpClient
@@ -21,15 +24,22 @@ namespace TyriaPlanner.Hud.Api
             _http.DefaultRequestHeaders.UserAgent.ParseAdd("TyriaPlanner.Hud/0.2 (Blish HUD)");
             _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
+
+        // Hand the server a GW2 API key, get back a scoped bearer the addon
+        // uses for all subsequent polls. Returns null if the key isn't
+        // recognised (the user typed it wrong or hasn't synced it on the
+        // profile page yet) · caller surfaces a hint.
         public async Task<string> ExchangeAsync(string baseUrl, string gw2ApiKey, CancellationToken cancel)
         {
             if (string.IsNullOrWhiteSpace(gw2ApiKey) || string.IsNullOrWhiteSpace(baseUrl)) return null;
+
             var body = JsonConvert.SerializeObject(new
             {
                 gw2_api_key = gw2ApiKey,
                 client_id = "tyria-hud-blish",
                 label = "Blish HUD",
             });
+
             using (var req = new HttpRequestMessage(HttpMethod.Post, baseUrl.TrimEnd('/') + "/api/addon/exchange"))
             {
                 req.Content = new StringContent(body, Encoding.UTF8, "application/json");
@@ -50,10 +60,15 @@ namespace TyriaPlanner.Hud.Api
                 }
             }
         }
+
         private class ExchangeResponse
         {
             public string access_token { get; set; }
         }
+
+        // The browse endpoint returns the same shape as /upcoming, just with
+        // wider time windows and no `since` cursor · used by the in-game menu
+        // so the user can see current state on demand.
         public async Task<UpcomingResponse> FetchBrowseAsync(
             string baseUrl,
             string bearer,
@@ -77,6 +92,10 @@ namespace TyriaPlanner.Hud.Api
                 }
             }
         }
+
+        // Returns null on auth failure so the caller can re-run an exchange
+        // and try once more. Throws for transient errors · the poller's
+        // catch block backs off via its own retry loop.
         public async Task<UpcomingResponse> FetchUpcomingAsync(
             string baseUrl,
             string bearer,
@@ -84,11 +103,13 @@ namespace TyriaPlanner.Hud.Api
             CancellationToken cancel)
         {
             if (string.IsNullOrWhiteSpace(bearer)) return null;
+
             var url = baseUrl.TrimEnd('/') + "/api/addon/upcoming";
             if (since.HasValue)
             {
                 url += "?since=" + Uri.EscapeDataString(since.Value.UtcDateTime.ToString("o"));
             }
+
             using (var req = new HttpRequestMessage(HttpMethod.Get, url))
             {
                 req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
@@ -106,6 +127,10 @@ namespace TyriaPlanner.Hud.Api
                 }
             }
         }
+
+        // POST /api/addon/checkin · marks the caller's signup for an event
+        // as "ready". Returns true on 200/204, false otherwise · caller
+        // surfaces a toast or button flash on failure.
         public async Task<bool> CheckinAsync(string baseUrl, string bearer, string eventId, CancellationToken cancel)
         {
             if (string.IsNullOrWhiteSpace(bearer) || string.IsNullOrWhiteSpace(eventId)) return false;
@@ -120,6 +145,7 @@ namespace TyriaPlanner.Hud.Api
                 }
             }
         }
+
         public async Task<PendingApprovalsResponse> FetchApprovalsAsync(string baseUrl, string bearer, CancellationToken cancel)
         {
             if (string.IsNullOrWhiteSpace(bearer)) return null;
@@ -134,6 +160,10 @@ namespace TyriaPlanner.Hud.Api
                 }
             }
         }
+
+        // Returns (ok, status). status==401/403 means the caller should run a
+        // fresh exchange and retry once with the new bearer · older addon
+        // installs may hold a bearer that predates the addon:write scope.
         public async Task<(bool ok, int status)> DecideApprovalAsync(string baseUrl, string bearer, string signupId, string decision, CancellationToken cancel)
         {
             if (string.IsNullOrWhiteSpace(bearer) || string.IsNullOrWhiteSpace(signupId)) return (false, 0);
@@ -152,7 +182,7 @@ namespace TyriaPlanner.Hud.Api
                         {
                             var errBody = string.Empty;
                             try { errBody = await res.Content.ReadAsStringAsync().ConfigureAwait(false); } catch { }
-                            Logger.Warn("decide failed Â· {0} {1} Â· {2}", code, res.ReasonPhrase, errBody);
+                            Logger.Warn("decide failed · {0} {1} · {2}", code, res.ReasonPhrase, errBody);
                             return (false, code);
                         }
                         return (true, code);
@@ -165,16 +195,19 @@ namespace TyriaPlanner.Hud.Api
                 return (false, 0);
             }
         }
+
         public void Dispose()
         {
             _http?.Dispose();
         }
     }
+
     public sealed class PendingApprovalsResponse
     {
         [JsonProperty("pending")]    public PendingApproval[] Pending { get; set; } = Array.Empty<PendingApproval>();
         [JsonProperty("serverTime")] public DateTime ServerTime { get; set; }
     }
+
     public sealed class PendingApproval
     {
         [JsonProperty("signupId")]             public string SignupId { get; set; }

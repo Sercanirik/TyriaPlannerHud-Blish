@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Threading;
 using Blish_HUD;
 using Blish_HUD.Controls;
 using Microsoft.Xna.Framework;
 using TyriaPlanner.Hud.Settings;
+
 namespace TyriaPlanner.Hud.Ui
 {
     public enum ToastAccent
@@ -12,6 +13,7 @@ namespace TyriaPlanner.Hud.Ui
         Reminder,
         NewEvent,
     }
+
     public sealed class EventToast : Container
     {
         private readonly string _commanderAccountName;
@@ -20,6 +22,7 @@ namespace TyriaPlanner.Hud.Ui
         private readonly bool _showSqjoin;
         private readonly bool _showJoinFromAppHint;
         private readonly Action<int> _onSnooze;
+
         public EventToast(
             ModuleSettings settings,
             string title,
@@ -41,13 +44,18 @@ namespace TyriaPlanner.Hud.Ui
             _showSqjoin = showSqjoin;
             _showJoinFromAppHint = showJoinFromAppHint;
             _onSnooze = onSnooze;
+
             var titleFont = settings.TitleFont();
             var bodyFont  = settings.BodyFont();
+
+            // Two button rows when snooze is offered + room for the recurring
+            // badge in the title area. Heights bump accordingly.
             bool snoozeRow = _onSnooze != null;
             var baseHeight = showJoinFromAppHint ? 130 : 110;
             if (snoozeRow) baseHeight += 32;
             Height = baseHeight;
             BackgroundColor = new Color(14, 14, 18, 235);
+
             var typeColor = EventColors.For(eventType, settings.ColorTheme.Value);
             new Panel
             {
@@ -57,6 +65,9 @@ namespace TyriaPlanner.Hud.Ui
                 Width = 4,
                 Height = baseHeight,
             };
+
+            // Title row. Recurring events get a small "[R]" prefix · keeps
+            // the title readable but flags repeating slots at a glance.
             var titleText = (isRecurring ? "[R] " : string.Empty) + title;
             new Label
             {
@@ -69,6 +80,7 @@ namespace TyriaPlanner.Hud.Ui
                 Height = (int)titleFont.LineHeight + 4,
                 AutoSizeWidth = false,
             };
+
             var dismiss = new StandardButton
             {
                 Parent = this,
@@ -78,6 +90,7 @@ namespace TyriaPlanner.Hud.Ui
                 Location = new Point(348, 6),
             };
             dismiss.Click += (_, __) => Dispose();
+
             new Label
             {
                 Parent = this,
@@ -90,6 +103,7 @@ namespace TyriaPlanner.Hud.Ui
                 WrapText = false,
                 AutoSizeWidth = false,
             };
+
             if (_showJoinFromAppHint)
             {
                 new Label
@@ -104,8 +118,12 @@ namespace TyriaPlanner.Hud.Ui
                     AutoSizeWidth = false,
                 };
             }
+
+            // Action row · /sqjoin (when signed up + commander known),
+            // /whisper, Voice (if URL), Open. Snooze row sits below if present.
             var actionsY = baseHeight - (snoozeRow ? 60 : 32);
             var x = 12;
+
             if (_showSqjoin && !string.IsNullOrWhiteSpace(_commanderAccountName))
             {
                 AddCopyButton("/sqjoin", $"/sqjoin {_commanderAccountName}", ref x, actionsY, 84);
@@ -119,6 +137,7 @@ namespace TyriaPlanner.Hud.Ui
                 AddVoiceButton(_voiceChannelUrl, ref x, actionsY, 70);
             }
             AddOpenButton(ref x, actionsY);
+
             if (snoozeRow)
             {
                 var sy = actionsY + 32;
@@ -127,6 +146,7 @@ namespace TyriaPlanner.Hud.Ui
                 AddSnoozeButton("Snooze 15 min", 15, ref sx, sy);
             }
         }
+
         private void AddCopyButton(string label, string payload, ref int x, int y, int width)
         {
             var btn = new StandardButton
@@ -144,6 +164,7 @@ namespace TyriaPlanner.Hud.Ui
             };
             x += width + 6;
         }
+
         private void AddWhisperButton(string accountName, ref int x, int y, int width)
         {
             var btn = new StandardButton
@@ -156,11 +177,18 @@ namespace TyriaPlanner.Hud.Ui
             };
             btn.Click += (_, __) =>
             {
+                // Plain clipboard copy of the bare account name. No chat
+                // automation, no async, no Blish input pipeline · the user
+                // opens chat themselves and types "/w " + paste + message.
+                // This is the only reliable path: every keyboard-simulation
+                // attempt either lost focus, got the modifier swallowed by
+                // the overlay, or crashed the host.
                 try { Clipboard.Set(accountName); } catch { }
                 FlashCopied(btn, "Copy name");
             };
             x += width + 6;
         }
+
         private void AddVoiceButton(string url, ref int x, int y, int width)
         {
             var btn = new StandardButton
@@ -179,6 +207,7 @@ namespace TyriaPlanner.Hud.Ui
             };
             x += width + 6;
         }
+
         private void AddOpenButton(ref int x, int y)
         {
             var open = new StandardButton
@@ -197,6 +226,7 @@ namespace TyriaPlanner.Hud.Ui
             };
             x += open.Width + 6;
         }
+
         private void AddSnoozeButton(string label, int minutes, ref int x, int y)
         {
             var btn = new StandardButton
@@ -214,9 +244,10 @@ namespace TyriaPlanner.Hud.Ui
             };
             x += btn.Width + 6;
         }
+
         private static void FlashCopied(StandardButton btn, string originalText)
         {
-            btn.Text = "âœ“ copied";
+            btn.Text = "✓ copied";
             Timer t = null;
             t = new Timer(_ =>
             {

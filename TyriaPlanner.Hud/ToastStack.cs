@@ -1,30 +1,44 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using Blish_HUD;
 using Blish_HUD.Controls;
 using Microsoft.Xna.Framework;
 using TyriaPlanner.Hud.Settings;
+
 namespace TyriaPlanner.Hud.Ui
 {
+    // Generic toast container stack. Accepts any Blish HUD `Container` so we
+    // can push both EventToast and AnnouncementToast through the same
+    // positioning / combat-pause / max-visible pipeline.
     public sealed class ToastStack : IDisposable
     {
         public event Action<Container> ToastPushed;
+
         private const int Margin = 12;
         private const int TopBarClearance = 36;
         private const int Spacing = 8;
         private const int ToastWidth = 380;
         private const int MaxVisible = 4;
+
         private readonly List<Container> _toasts = new List<Container>();
+        // Deferred queue · holds toast factories waiting for the player to
+        // leave combat. We store the factory not the toast itself so the
+        // control is constructed on the main thread when it is actually shown
+        // (Blish controls don't tolerate cross-thread init).
         private readonly Queue<Func<Container>> _deferred = new Queue<Func<Container>>();
         private readonly ModuleSettings _settings;
         private readonly Timer _combatPoller;
+
         public ToastStack(ModuleSettings settings)
         {
             _settings = settings;
+            // Poll combat state every second · cheap (Mumble is just a memory
+            // map). Drains the deferred queue as soon as combat ends.
             _combatPoller = new Timer(_ => TryDrainDeferred(), null,
                 TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
         }
+
         public void Push(Func<Container> factory)
         {
             if (factory == null) return;
@@ -38,6 +52,8 @@ namespace TyriaPlanner.Hud.Ui
                 try { Show(factory()); } catch { }
             });
         }
+
+        // Convenience for call sites that already constructed the toast.
         public void Push(Container toast)
         {
             if (toast == null) return;
@@ -48,12 +64,14 @@ namespace TyriaPlanner.Hud.Ui
             }
             GameService.Overlay.QueueMainThreadUpdate(_ => Show(toast));
         }
+
         private bool ShouldDefer()
         {
             if (_settings?.PauseInCombat == null || !_settings.PauseInCombat.Value) return false;
             try { return GameService.Gw2Mumble.PlayerCharacter.IsInCombat; }
             catch { return false; }
         }
+
         private void TryDrainDeferred()
         {
             if (ShouldDefer()) return;
@@ -72,12 +90,14 @@ namespace TyriaPlanner.Hud.Ui
                 }
             });
         }
+
         private void Show(Container toast)
         {
             var screen = GameService.Graphics.SpriteScreen;
             toast.Parent = screen;
             toast.Width = ToastWidth;
             toast.Disposed += OnToastDisposed;
+
             _toasts.Add(toast);
             if (_toasts.Count > MaxVisible)
             {
@@ -88,6 +108,7 @@ namespace TyriaPlanner.Hud.Ui
             ReflowLocation(screen);
             ToastPushed?.Invoke(toast);
         }
+
         private void OnToastDisposed(object sender, System.EventArgs e)
         {
             if (sender is Container t)
@@ -96,10 +117,12 @@ namespace TyriaPlanner.Hud.Ui
                 ReflowLocation(GameService.Graphics.SpriteScreen);
             }
         }
+
         private void ReflowLocation(Control screen)
         {
             if (screen == null) return;
             var pos = _settings?.ToastPosition?.Value ?? ToastPositionPreference.TopCenter;
+
             switch (pos)
             {
                 case ToastPositionPreference.TopRight:
@@ -131,6 +154,7 @@ namespace TyriaPlanner.Hud.Ui
                 }
             }
         }
+
         public void Clear()
         {
             foreach (var t in _toasts.ToArray())
@@ -140,6 +164,7 @@ namespace TyriaPlanner.Hud.Ui
             _toasts.Clear();
             lock (_deferred) { _deferred.Clear(); }
         }
+
         public void Dispose()
         {
             _combatPoller?.Dispose();

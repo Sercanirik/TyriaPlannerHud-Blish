@@ -20,7 +20,7 @@ jobs:
           dotnet-version: '8.0.x'
       - run: dotnet restore TyriaPlanner.Hud/TyriaPlanner.Hud.csproj
       - run: dotnet build TyriaPlanner.Hud/TyriaPlanner.Hud.csproj -c Release --no-restore
-      - name: Locate + rename .bhm with namespace and version
+      - name: Locate + rename .bhm
         shell: pwsh
         run: |
           $manifest = Get-Content "TyriaPlanner.Hud/manifest.json" | ConvertFrom-Json
@@ -28,8 +28,6 @@ jobs:
           if (-not $bhm) { throw "no .bhm artifact found" }
           $versioned = Join-Path $bhm.DirectoryName "$($manifest.namespace)-$($manifest.version).bhm"
           Copy-Item $bhm.FullName $versioned
-          Write-Host "Built: $($bhm.FullName)"
-          Write-Host "Versioned: $versioned"
           "BHM_PATH=$($bhm.FullName)"   | Out-File -Append -FilePath $env:GITHUB_ENV
           "BHM_VERSIONED=$versioned"    | Out-File -Append -FilePath $env:GITHUB_ENV
       - uses: actions/upload-artifact@v4

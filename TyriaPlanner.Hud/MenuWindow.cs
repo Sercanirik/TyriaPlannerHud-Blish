@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,6 +10,7 @@ using Microsoft.Xna.Framework.Input;
 using TyriaPlanner.Hud.Api;
 using TyriaPlanner.Hud.Services;
 using TyriaPlanner.Hud.Settings;
+
 namespace TyriaPlanner.Hud.Ui
 {
     public sealed class MenuWindow : Container
@@ -18,6 +19,7 @@ namespace TyriaPlanner.Hud.Ui
         private readonly ModuleSettings _settings;
         private readonly NotificationService _notify;
         private readonly NotificationHistory _history;
+
         private readonly Panel _titleBar;
         private readonly FlowPanel _content;
         private readonly Label _statusLabel;
@@ -26,23 +28,32 @@ namespace TyriaPlanner.Hud.Ui
         private readonly Checkbox _notifyNewEventsCheckbox;
         private readonly Timer _autoRefresh;
         private CancellationTokenSource _inFlight;
+
+        // Drag state · the title bar listens for mouse events and we update
+        // Location on every move. Tracking the offset within the bar keeps
+        // the cursor anchored to the exact pixel the user grabbed.
         private bool _dragging;
         private Point _dragOffset;
+
         private const int WindowWidth  = 480;
         private const int WindowHeight = 560;
         private const int TitleBarHeight = 32;
         private const int TogglesHeight  = 28;
+
         public MenuWindow(ApiClient api, ModuleSettings settings, NotificationService notify, NotificationHistory history)
         {
             _api = api;
             _settings = settings;
             _notify = notify;
             _history = history;
+
             Width = WindowWidth;
             Height = WindowHeight;
             BackgroundColor = new Color(14, 14, 18, 240);
             Visible = false;
             ZIndex = 200;
+
+            // ── Title bar ────────────────────────────────────────────────
             _titleBar = new Panel
             {
                 Parent = this,
@@ -62,6 +73,7 @@ namespace TyriaPlanner.Hud.Ui
                 Height = 22,
                 AutoSizeWidth = false,
             };
+
             var close = new StandardButton
             {
                 Parent = _titleBar,
@@ -71,6 +83,7 @@ namespace TyriaPlanner.Hud.Ui
                 Location = new Point(WindowWidth - 36, 5),
             };
             close.Click += (_, __) => HideMenu();
+
             _refreshButton = new StandardButton
             {
                 Parent = _titleBar,
@@ -80,7 +93,15 @@ namespace TyriaPlanner.Hud.Ui
                 Location = new Point(WindowWidth - 36 - 78, 5),
             };
             _refreshButton.Click += (_, __) => _ = RefreshAsync();
+
+            // Drag bootstrap · only the title-bar press starts a drag, but
+            // tracking the mouse needs to be GLOBAL because the cursor leaves
+            // the bar immediately. We subscribe to the global Input.Mouse
+            // events on press and unsubscribe on release; that way the
+            // window follows the cursor anywhere on screen.
             _titleBar.LeftMouseButtonPressed += OnTitlePressed;
+
+            // ── Toggle row ───────────────────────────────────────────────
             var togglesRow = new Panel
             {
                 Parent = this,
@@ -98,6 +119,7 @@ namespace TyriaPlanner.Hud.Ui
             };
             _notifySignupsCheckbox.CheckedChanged += (_, args) =>
                 _settings.NotifyOwnSignups.Value = args.Checked;
+
             _notifyNewEventsCheckbox = new Checkbox
             {
                 Parent = togglesRow,
@@ -107,6 +129,12 @@ namespace TyriaPlanner.Hud.Ui
             };
             _notifyNewEventsCheckbox.CheckedChanged += (_, args) =>
                 _settings.NotifyNewGuildEvents.Value = args.Checked;
+
+            // (Test toast button removed · the live toast pipeline now
+            // gives plenty of feedback via the new "Signed up" trigger
+            // and the wider browse list.)
+
+            // ── Status line ──────────────────────────────────────────────
             _statusLabel = new Label
             {
                 Parent = this,
@@ -118,6 +146,8 @@ namespace TyriaPlanner.Hud.Ui
                 Height = 18,
                 AutoSizeWidth = false,
             };
+
+            // ── Scrollable content area ──────────────────────────────────
             var contentTop = TitleBarHeight + TogglesHeight + 28;
             _content = new FlowPanel
             {
@@ -130,71 +160,97 @@ namespace TyriaPlanner.Hud.Ui
                 ControlPadding = new Vector2(0, 6),
                 OuterControlPadding = new Vector2(0, 0),
             };
+
             _autoRefresh = new Timer(_ =>
             {
                 if (!Visible) return;
                 GameService.Overlay.QueueMainThreadUpdate(__ => { _ = RefreshAsync(); });
             }, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         }
+
+        // ── Drag handlers ────────────────────────────────────────────────
+
         private void OnTitlePressed(object sender, MouseEventArgs e)
         {
             if (_dragging) return;
             _dragging = true;
             var mouse = GameService.Input.Mouse.Position;
             _dragOffset = new Point(mouse.X - Location.X, mouse.Y - Location.Y);
+
+            // Track on the GLOBAL mouse, not the title bar · the cursor
+            // moves outside the bar within the first pixel of drag and the
+            // bar's events stop firing.
             GameService.Input.Mouse.MouseMoved += OnGlobalMouseMoved;
             GameService.Input.Mouse.LeftMouseButtonReleased += OnGlobalReleased;
         }
+
         private void OnGlobalMouseMoved(object sender, MouseEventArgs e)
         {
             if (!_dragging) return;
             var mouse = GameService.Input.Mouse.Position;
             var screen = GameService.Graphics.SpriteScreen;
+            // Clamp so the title bar stays on-screen · prevents users from
+            // dragging the panel out of reach.
             var newX = Math.Max(-WindowWidth + 80, Math.Min(screen.Width - 80, mouse.X - _dragOffset.X));
             var newY = Math.Max(0, Math.Min(screen.Height - 40, mouse.Y - _dragOffset.Y));
             Location = new Point(newX, newY);
         }
+
         private void OnGlobalReleased(object sender, MouseEventArgs e)
         {
             _dragging = false;
             GameService.Input.Mouse.MouseMoved -= OnGlobalMouseMoved;
             GameService.Input.Mouse.LeftMouseButtonReleased -= OnGlobalReleased;
         }
+
+        // ── Show / refresh ───────────────────────────────────────────────
+
         public void ShowMenu()
         {
             var screen = GameService.Graphics.SpriteScreen;
             Parent = screen;
+            // Open near the corner icon · top-center, just below the bar.
             Location = new Point(
                 (screen.Width - Width) / 2,
                 Math.Max(40, screen.Height / 6));
             Visible = true;
             ZIndex = 1000;
+
+            // Re-sync toggles with persisted values · the user may have
+            // changed them in Blish's settings panel while menu was closed.
             _notifySignupsCheckbox.Checked = _settings.NotifyOwnSignups.Value;
             _notifyNewEventsCheckbox.Checked = _settings.NotifyNewGuildEvents.Value;
+
             _autoRefresh.Change(TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
             _ = RefreshAsync();
         }
+
         public void HideMenu()
         {
             Visible = false;
             _autoRefresh.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         }
+
         public void Toggle()
         {
             if (Visible) HideMenu();
             else ShowMenu();
         }
+
         private async Task RefreshAsync()
         {
             _inFlight?.Cancel();
             _inFlight = new CancellationTokenSource();
             var cancel = _inFlight.Token;
+
             _statusLabel.Text = "Loading...";
             _refreshButton.Enabled = false;
+
             try
             {
                 var baseUrl = _settings.ApiBaseUrl.Value;
                 var bearer  = _settings.CachedBearer.Value;
+
                 if (string.IsNullOrWhiteSpace(bearer))
                 {
                     if (string.IsNullOrWhiteSpace(_settings.Gw2ApiKey.Value))
@@ -210,7 +266,9 @@ namespace TyriaPlanner.Hud.Ui
                     }
                     _settings.CachedBearer.Value = bearer;
                 }
+
                 var resp = await _api.FetchBrowseAsync(baseUrl, bearer, cancel).ConfigureAwait(false);
+
                 if (resp == null)
                 {
                     _settings.CachedBearer.Value = string.Empty;
@@ -221,38 +279,47 @@ namespace TyriaPlanner.Hud.Ui
                         resp = await _api.FetchBrowseAsync(baseUrl, bearer, cancel).ConfigureAwait(false);
                     }
                 }
+
                 if (resp == null)
                 {
                     _statusLabel.Text = "Failed to load. Check your API key or network.";
                     return;
                 }
+
+                // Officer approval queue is best-effort · users who aren't
+                // in any officer role just get an empty list. Failure here
+                // shouldn't poison the main menu render.
                 PendingApprovalsResponse approvals = null;
                 try { approvals = await _api.FetchApprovalsAsync(baseUrl, bearer, cancel).ConfigureAwait(false); } catch { }
+
                 GameService.Overlay.QueueMainThreadUpdate(_ => Populate(resp, approvals));
             }
-            catch (TaskCanceledException) {  }
+            catch (TaskCanceledException) { /* stacked refresh · ignore */ }
             catch (Exception ex)
             {
                 Logger.GetLogger<MenuWindow>().Warn(ex, "Browse refresh failed.");
-                _statusLabel.Text = "Refresh failed Â· try again.";
+                _statusLabel.Text = "Refresh failed · try again.";
             }
             finally
             {
                 _refreshButton.Enabled = true;
             }
         }
+
         private void Populate(UpcomingResponse resp, PendingApprovalsResponse approvals = null)
         {
             _content.ClearChildren();
+
             if (approvals?.Pending != null && approvals.Pending.Length > 0)
             {
-                AddSectionHeader($"Pending approvals Â· {approvals.Pending.Length}");
+                AddSectionHeader($"Pending approvals · {approvals.Pending.Length}");
                 foreach (var p in approvals.Pending)
                 {
                     AddApprovalRow(p);
                 }
             }
-            AddSectionHeader($"My signups (next 7 days)  Â·  {resp.MySignups?.Length ?? 0}");
+
+            AddSectionHeader($"My signups (next 7 days)  ·  {resp.MySignups?.Length ?? 0}");
             if (resp.MySignups == null || resp.MySignups.Length == 0)
             {
                 AddEmptyRow("Nothing scheduled. Sign up to events on the mobile app to see them here.");
@@ -264,7 +331,8 @@ namespace TyriaPlanner.Hud.Ui
                     AddEventRow(ev, showSqjoin: true);
                 }
             }
-            AddSectionHeader($"New guild events (last 24h)  Â·  {resp.NewGuildEvents?.Length ?? 0}");
+
+            AddSectionHeader($"New guild events (last 24h)  ·  {resp.NewGuildEvents?.Length ?? 0}");
             if (resp.NewGuildEvents == null || resp.NewGuildEvents.Length == 0)
             {
                 AddEmptyRow("No new guild events you haven't signed up to yet.");
@@ -276,7 +344,8 @@ namespace TyriaPlanner.Hud.Ui
                     AddEventRow(ev, showSqjoin: false);
                 }
             }
-            AddSectionHeader($"Guild announcements (last 24h)  Â·  {resp.NewAnnouncements?.Length ?? 0}");
+
+            AddSectionHeader($"Guild announcements (last 24h)  ·  {resp.NewAnnouncements?.Length ?? 0}");
             if (resp.NewAnnouncements == null || resp.NewAnnouncements.Length == 0)
             {
                 AddEmptyRow("No recent guild announcements.");
@@ -288,28 +357,40 @@ namespace TyriaPlanner.Hud.Ui
                     AddAnnouncementRow(ann);
                 }
             }
+
+            // Recent toasts · so users can re-check anything they dismissed
+            // or missed while alt-tabbed out. In-memory only · clears on
+            // module reload.
             var history = _history?.Snapshot();
             if (history != null && history.Count > 0)
             {
-                AddSectionHeader($"Recent notifications  Â·  last {Math.Min(history.Count, 10)}");
+                AddSectionHeader($"Recent notifications  ·  last {Math.Min(history.Count, 10)}");
                 foreach (var entry in history.GetRange(0, Math.Min(history.Count, 10)))
                 {
                     AddHistoryRow(entry);
                 }
             }
-            _statusLabel.Text = $"Updated Â· server time {resp.ServerTime:HH:mm:ss}";
+
+            _statusLabel.Text = $"Updated · server time {resp.ServerTime:HH:mm:ss}";
         }
+
         private void AddAnnouncementRow(Announcement ann)
         {
             var titleFont = _settings.TitleFont();
             var bodyFont  = _settings.BodyFont();
             int titleH    = (int)titleFont.LineHeight;
             int bodyH     = (int)bodyFont.LineHeight;
+
+            // Body wraps into up to 3 body-font lines · longer content
+            // gets truncated visually by the label clip. The full body is
+            // still in the announcement's `Content` field if we later add
+            // a "view full" affordance.
             int bodyBlock = bodyH * 3 + 4;
             int padTop    = 8;
             int padMid    = 4;
             int padBot    = 8;
             int rowHeight = padTop + titleH + padMid + bodyH + padMid + bodyBlock + padBot;
+
             var accent = Color.Goldenrod;
             var row = new Panel
             {
@@ -326,9 +407,10 @@ namespace TyriaPlanner.Hud.Ui
                 Width = 4,
                 Height = rowHeight,
             };
+
             var head = string.IsNullOrWhiteSpace(ann.GuildTag)
-                ? $"ðŸ“¢ {ann.GuildName}"
-                : $"ðŸ“¢ [{ann.GuildTag}] {ann.GuildName}";
+                ? $"📢 {ann.GuildName}"
+                : $"📢 [{ann.GuildTag}] {ann.GuildName}";
             new Label
             {
                 Parent = row,
@@ -340,15 +422,16 @@ namespace TyriaPlanner.Hud.Ui
                 Height = titleH + 2,
                 AutoSizeWidth = false,
             };
+
             var senderAndTime = string.IsNullOrWhiteSpace(ann.SenderAccountName)
                 ? FormatAgo(ann.CreatedAt)
-                : $"{ann.SenderAccountName} Â· {FormatAgo(ann.CreatedAt)}";
+                : $"{ann.SenderAccountName} · {FormatAgo(ann.CreatedAt)}";
             new Label
             {
                 Parent = row,
                 Text = string.IsNullOrWhiteSpace(ann.Title)
                     ? senderAndTime
-                    : $"{ann.Title} Â· {senderAndTime}",
+                    : $"{ann.Title} · {senderAndTime}",
                 Font = bodyFont,
                 TextColor = new Color(220, 200, 140),
                 Location = new Point(12, padTop + titleH + padMid),
@@ -356,6 +439,7 @@ namespace TyriaPlanner.Hud.Ui
                 Height = bodyH + 2,
                 AutoSizeWidth = false,
             };
+
             new Label
             {
                 Parent = row,
@@ -369,6 +453,7 @@ namespace TyriaPlanner.Hud.Ui
                 WrapText = true,
             };
         }
+
         private void AddApprovalRow(PendingApproval p)
         {
             var typeColor = EventColors.For(p.EventType, _settings.ColorTheme.Value);
@@ -392,7 +477,7 @@ namespace TyriaPlanner.Hud.Ui
             new Label
             {
                 Parent = row,
-                Text = $"{p.EventTitle} Â· {PrettyType(p.EventType)}",
+                Text = $"{p.EventTitle} · {PrettyType(p.EventType)}",
                 Font = titleFont,
                 TextColor = typeColor,
                 Location = new Point(12, 6),
@@ -400,6 +485,7 @@ namespace TyriaPlanner.Hud.Ui
                 Height = (int)titleFont.LineHeight + 2,
                 AutoSizeWidth = false,
             };
+
             var spec = !string.IsNullOrWhiteSpace(p.CharacterEliteSpec) ? p.CharacterEliteSpec : p.CharacterProfession;
             var applicant = !string.IsNullOrWhiteSpace(p.ApplicantAccountName)
                 ? p.ApplicantAccountName
@@ -407,7 +493,7 @@ namespace TyriaPlanner.Hud.Ui
             new Label
             {
                 Parent = row,
-                Text = $"{applicant} Â· {p.CharacterName} ({spec}) Â· {p.GuildName}",
+                Text = $"{applicant} · {p.CharacterName} ({spec}) · {p.GuildName}",
                 Font = bodyFont,
                 TextColor = new Color(210, 210, 210),
                 Location = new Point(12, 10 + (int)titleFont.LineHeight),
@@ -415,6 +501,7 @@ namespace TyriaPlanner.Hud.Ui
                 Height = (int)bodyFont.LineHeight + 2,
                 AutoSizeWidth = false,
             };
+
             var btnY = row.Height - 32;
             var approve = new StandardButton
             {
@@ -425,6 +512,7 @@ namespace TyriaPlanner.Hud.Ui
                 Location = new Point(12, btnY),
             };
             approve.Click += (_, __) => _ = DecideAsync(p.SignupId, "approved", approve);
+
             var reject = new StandardButton
             {
                 Parent = row,
@@ -435,12 +523,17 @@ namespace TyriaPlanner.Hud.Ui
             };
             reject.Click += (_, __) => _ = DecideAsync(p.SignupId, "rejected", reject);
         }
+
         private async Task DecideAsync(string signupId, string decision, StandardButton btn)
         {
             btn.Enabled = false;
             var baseUrl = _settings.ApiBaseUrl.Value;
             var bearer  = _settings.CachedBearer.Value;
             var result = await _api.DecideApprovalAsync(baseUrl, bearer, signupId, decision, CancellationToken.None).ConfigureAwait(false);
+
+            // Older addon installs hold a bearer issued before addon:write was
+            // added to the exchange · /decide replies 401/403. Run a fresh
+            // exchange and retry once.
             if (!result.ok && (result.status == 401 || result.status == 403)
                 && !string.IsNullOrWhiteSpace(_settings.Gw2ApiKey.Value))
             {
@@ -452,10 +545,11 @@ namespace TyriaPlanner.Hud.Ui
                     result = await _api.DecideApprovalAsync(baseUrl, fresh, signupId, decision, CancellationToken.None).ConfigureAwait(false);
                 }
             }
+
             bool ok = result.ok;
             GameService.Overlay.QueueMainThreadUpdate(_ =>
             {
-                try { btn.Text = ok ? "âœ“" : "failed"; } catch { }
+                try { btn.Text = ok ? "✓" : "failed"; } catch { }
             });
             if (ok)
             {
@@ -471,11 +565,13 @@ namespace TyriaPlanner.Hud.Ui
                 });
             }
         }
+
         private void AddHistoryRow(HistoryEntry entry)
         {
             var typeColor = EventColors.For(entry.EventType, _settings.ColorTheme.Value);
             var bodyFont = _settings.BodyFont();
             var titleFont = _settings.TitleFont();
+
             var row = new Panel
             {
                 Parent = _content,
@@ -502,10 +598,13 @@ namespace TyriaPlanner.Hud.Ui
                 Height = (int)titleFont.LineHeight + 2,
                 AutoSizeWidth = false,
             };
+            // × dismiss · removes the entry from the in-memory ring buffer
+            // and disposes the row directly. Avoids a network round-trip we
+            // don't need for a purely local UI action.
             var dismiss = new StandardButton
             {
                 Parent = row,
-                Text = "Ã—",
+                Text = "×",
                 Width = 32,
                 Height = 24,
                 Location = new Point(row.Width - 40, 4),
@@ -519,7 +618,7 @@ namespace TyriaPlanner.Hud.Ui
             new Label
             {
                 Parent = row,
-                Text = $"{entry.Subtitle} Â· {FormatAgo(entry.At)}",
+                Text = $"{entry.Subtitle} · {FormatAgo(entry.At)}",
                 Font = bodyFont,
                 TextColor = new Color(180, 180, 180),
                 Location = new Point(10, 8 + (int)titleFont.LineHeight),
@@ -528,6 +627,7 @@ namespace TyriaPlanner.Hud.Ui
                 AutoSizeWidth = false,
             };
         }
+
         private static string FormatAgo(DateTime past)
         {
             var seconds = (DateTime.UtcNow - past).TotalSeconds;
@@ -536,6 +636,7 @@ namespace TyriaPlanner.Hud.Ui
             if (seconds < 86400) return $"{(int)(seconds / 3600)}h ago";
             return $"{(int)(seconds / 86400)}d ago";
         }
+
         private void AddSectionHeader(string text)
         {
             var font = _settings.TitleFont();
@@ -550,6 +651,7 @@ namespace TyriaPlanner.Hud.Ui
                 AutoSizeWidth = false,
             };
         }
+
         private void AddEmptyRow(string text)
         {
             var font = _settings.BodyFont();
@@ -565,29 +667,38 @@ namespace TyriaPlanner.Hud.Ui
                 WrapText = true,
             };
         }
+
         private void AddEventRow(EventBase ev, bool showSqjoin)
         {
             var typeColor = EventColors.For(ev.Type, _settings.ColorTheme.Value);
             var titleFont = _settings.TitleFont();
             var bodyFont  = _settings.BodyFont();
+
             int titleH = (int)titleFont.LineHeight;
             int bodyH  = (int)bodyFont.LineHeight;
             int padTop = 8;
             int padMid = 6;
             int btnH   = 26;
             int padBot = 8;
+
+            // Subtitle line2 carries character/KP/boss info · for fractals
+            // the boss list can be long, so we let it wrap onto a second
+            // body-font line and grow the row accordingly. line1 stays on
+            // a single line · it's short by construction.
             var subtitleLine1 = BuildSubtitleLine1(ev);
             var subtitleLine2 = BuildSubtitleLine2(ev);
             bool hasLine2 = !string.IsNullOrWhiteSpace(subtitleLine2);
             int line2WrapLines = hasLine2 ? EstimateWrapLines(subtitleLine2, _content.Width - 38, 7) : 0;
             if (line2WrapLines < 1 && hasLine2) line2WrapLines = 1;
             if (line2WrapLines > 2) line2WrapLines = 2;
+
             int titleY     = padTop;
             int subtitleY  = titleY + titleH + 2;
             int subtitle2Y = subtitleY + bodyH + 2;
             int subtitle2H = bodyH * line2WrapLines + (line2WrapLines > 1 ? 2 : 0);
             int buttonY    = (hasLine2 ? subtitle2Y + subtitle2H : subtitleY + bodyH) + padMid;
             int rowHeight  = buttonY + btnH + padBot;
+
             var row = new Panel
             {
                 Parent = _content,
@@ -595,6 +706,7 @@ namespace TyriaPlanner.Hud.Ui
                 Height = rowHeight,
                 BackgroundColor = new Color(22, 22, 26, 220),
             };
+
             new Panel
             {
                 Parent = row,
@@ -603,6 +715,7 @@ namespace TyriaPlanner.Hud.Ui
                 Width = 4,
                 Height = rowHeight,
             };
+
             int countdownWidth = 100;
             new Label
             {
@@ -616,6 +729,7 @@ namespace TyriaPlanner.Hud.Ui
                 AutoSizeWidth = false,
                 HorizontalAlignment = HorizontalAlignment.Right,
             };
+
             new Label
             {
                 Parent = row,
@@ -627,6 +741,7 @@ namespace TyriaPlanner.Hud.Ui
                 Height = titleH + 2,
                 AutoSizeWidth = false,
             };
+
             new Label
             {
                 Parent = row,
@@ -653,6 +768,7 @@ namespace TyriaPlanner.Hud.Ui
                     WrapText = true,
                 };
             }
+
             const int BtnW = 80;
             var x = 12;
             var commander = ev.CommanderAccountName;
@@ -668,12 +784,16 @@ namespace TyriaPlanner.Hud.Ui
             {
                 AddVoiceButton(row, ev.VoiceChannelUrl, ref x, buttonY, BtnW);
             }
+            // Check-in only when the event hasn't started yet · clicking
+            // "check in" after the squad has pulled would be pointless and
+            // would only confuse the user.
             if (ev is MySignup signup
                 && signup.CheckinStatus == "pending"
                 && signup.ScheduledAt > DateTime.UtcNow)
             {
                 AddCheckinButton(row, signup.Id, ref x, buttonY, BtnW);
             }
+
             var openUrl = $"https://tyriaplanner.com/event/{ev.Id}";
             var open = new StandardButton
             {
@@ -690,6 +810,7 @@ namespace TyriaPlanner.Hud.Ui
                 FlashCopied(open, "Open");
             };
         }
+
         private void AddCheckinButton(Container parent, string eventId, ref int x, int y, int width)
         {
             var btn = new StandardButton
@@ -711,7 +832,7 @@ namespace TyriaPlanner.Hud.Ui
                 {
                     try
                     {
-                        btn.Text = ok ? "âœ“ checked in" : "failed";
+                        btn.Text = ok ? "✓ checked in" : "failed";
                         if (!ok)
                         {
                             Timer t = null;
@@ -730,6 +851,7 @@ namespace TyriaPlanner.Hud.Ui
             };
             x += btn.Width + 6;
         }
+
         private static void AddVoiceButton(Container parent, string url, ref int x, int y, int width)
         {
             var btn = new StandardButton
@@ -748,6 +870,12 @@ namespace TyriaPlanner.Hud.Ui
             };
             x += btn.Width + 6;
         }
+
+        // Plain clipboard copy of the bare account name. User opens chat
+        // themselves and types "/w " then pastes + their message. Every
+        // keyboard-simulation route (SendInput, Intern.Keyboard,
+        // GameIntegration.Chat.Paste) either lost focus, dropped the
+        // modifier, or crashed the host · so clipboard-only it is.
         private static void AddWhisperButton(Container parent, string accountName, ref int x, int y, int width)
         {
             var btn = new StandardButton
@@ -765,6 +893,7 @@ namespace TyriaPlanner.Hud.Ui
             };
             x += width + 6;
         }
+
         private static void AddCopyButton(Container parent, string label, string payload, ref int x, int y, int width)
         {
             var btn = new StandardButton
@@ -782,35 +911,44 @@ namespace TyriaPlanner.Hud.Ui
             };
             x += width + 6;
         }
+
         private static void FlashCopied(StandardButton btn, string original)
         {
-            btn.Text = "âœ“ copied";
+            btn.Text = "✓ copied";
             Timer t = null;
             t = new Timer(_ =>
             {
                 GameService.Overlay.QueueMainThreadUpdate(__ =>
                 {
-                    try { btn.Text = original; } catch {  }
+                    try { btn.Text = original; } catch { /* button gone · row dropped */ }
                 });
                 t?.Dispose();
             }, null, TimeSpan.FromMilliseconds(1400), Timeout.InfiniteTimeSpan);
         }
+
+        // First line · short, always present · guild + commander + type +
+        // signup count (the headline metric users wanted on the card).
         private static string BuildSubtitleLine1(EventBase ev)
         {
             var guild = string.IsNullOrWhiteSpace(ev.GuildName) ? "Public" : ev.GuildName;
             var commander = !string.IsNullOrWhiteSpace(ev.CommanderAccountName)
                 ? ev.CommanderAccountName
                 : ev.CommanderDisplayName ?? "?";
-            var head = $"{guild} Â· {commander} Â· {PrettyType(ev.Type)}";
+            var head = $"{guild} · {commander} · {PrettyType(ev.Type)}";
             if (ev.MaxSignups > 0)
             {
-                head += $" Â· {ev.SignupCount}/{ev.MaxSignups} signed up";
+                head += $" · {ev.SignupCount}/{ev.MaxSignups} signed up";
             }
             return head;
         }
+
+        // Second line · longer details · character + KP + boss preview.
+        // Empty string returned when none of these apply, so the caller can
+        // skip rendering the label.
         private static string BuildSubtitleLine2(EventBase ev)
         {
             var parts = new System.Collections.Generic.List<string>();
+
             if (ev is MySignup ms && ms.SignupCharacter != null)
             {
                 var spec = !string.IsNullOrWhiteSpace(ms.SignupCharacter.EliteSpec)
@@ -818,17 +956,23 @@ namespace TyriaPlanner.Hud.Ui
                     : ms.SignupCharacter.Profession;
                 parts.Add($"as {ms.SignupCharacter.Name} ({spec})");
             }
+
             if (ev.KpRequirement != null && ev.KpRequirement.Amount > 0)
             {
                 var modeShort = ev.KpRequirement.Mode == "average" ? "avg" : "min";
                 parts.Add($"KP {modeShort} {ev.KpRequirement.Amount}");
             }
+
             if (ev.BossSlugs != null && ev.BossSlugs.Length > 0)
             {
+                // Show all bosses · users specifically asked us to stop
+                // truncating with "..." when a fractal day had more than four.
                 parts.Add(string.Join(", ", ev.BossSlugs));
             }
-            return string.Join(" Â· ", parts);
+
+            return string.Join(" · ", parts);
         }
+
         private static string BuildCountdown(EventBase ev)
         {
             var totalMinutes = (ev.ScheduledAt - DateTime.UtcNow).TotalMinutes;
@@ -847,6 +991,12 @@ namespace TyriaPlanner.Hud.Ui
             if (rh >= 24) { d += 1; rh = 0; }
             return rh > 0 ? $"in {d}d {rh}h" : $"in {d}d";
         }
+
+        // Rough wrap estimate · "how many lines will this text take when
+        // rendered into `widthPx` at roughly `pxPerChar` pixels per character?"
+        // Blish doesn't expose font measurement here, so we use a coarse
+        // heuristic that is good enough to decide between a 1- and 2-line
+        // row. We never grow past 2 lines.
         private static int EstimateWrapLines(string text, int widthPx, int pxPerChar)
         {
             if (string.IsNullOrEmpty(text)) return 0;
@@ -854,6 +1004,7 @@ namespace TyriaPlanner.Hud.Ui
             int lines = (int)Math.Ceiling((double)text.Length / charsPerLine);
             return Math.Max(1, lines);
         }
+
         private static string PrettyType(string type)
         {
             switch (type)
@@ -866,6 +1017,7 @@ namespace TyriaPlanner.Hud.Ui
                 default:           return type ?? "Event";
             }
         }
+
         protected override void DisposeControl()
         {
             _autoRefresh?.Dispose();

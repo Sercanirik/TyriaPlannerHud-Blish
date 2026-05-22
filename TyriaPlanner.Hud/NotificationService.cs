@@ -1,24 +1,28 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Media;
 using Blish_HUD;
 using TyriaPlanner.Hud.Api;
 using TyriaPlanner.Hud.Settings;
 using TyriaPlanner.Hud.Ui;
+
 namespace TyriaPlanner.Hud.Services
 {
     public sealed class NotificationService
     {
         private static readonly Logger Logger = Logger.GetLogger<NotificationService>();
+
         private readonly ToastStack _stack;
         private readonly ModuleSettings _settings;
         private readonly NotificationHistory _history;
+
         public NotificationService(ToastStack stack, ModuleSettings settings, NotificationHistory history)
         {
             _stack = stack;
             _settings = settings;
             _history = history;
         }
+
         private void RecordAndChime(string title, string subtitle, string eventType, string eventId)
         {
             _history.Record(title, subtitle, eventType, eventId);
@@ -28,11 +32,13 @@ namespace TyriaPlanner.Hud.Services
                 catch (Exception ex) { Logger.Warn(ex, "System sound failed."); }
             }
         }
+
         public void PostCheckinOpenToast(MySignup signup)
         {
-            var title = $"Check-in time Â· {Pretty(signup.Title, signup.Type)}";
+            var title = $"Check-in time · {Pretty(signup.Title, signup.Type)}";
             var subtitle = "Open the Tyria Planner app and check in";
             RecordAndChime(title, subtitle, signup.Type, signup.Id);
+
             _stack.Push(new EventToast(
                 settings: _settings,
                 title: title,
@@ -48,13 +54,15 @@ namespace TyriaPlanner.Hud.Services
                 isRecurring: signup.IsRecurring,
                 onSnooze: minutes => ScheduleSnooze(minutes, () => PostCheckinOpenToast(signup))));
         }
+
         public void PostStartingToast(MySignup signup)
         {
-            var title = $"Starting now Â· {Pretty(signup.Title, signup.Type)}";
+            var title = $"Starting now · {Pretty(signup.Title, signup.Type)}";
             var subtitle = signup.GuildName != null
-                ? $"{signup.GuildName} Â· commander {Commander(signup)}"
-                : $"Public Â· commander {Commander(signup)}";
+                ? $"{signup.GuildName} · commander {Commander(signup)}"
+                : $"Public · commander {Commander(signup)}";
             RecordAndChime(title, subtitle, signup.Type, signup.Id);
+
             _stack.Push(new EventToast(
                 settings: _settings,
                 title: title,
@@ -70,24 +78,28 @@ namespace TyriaPlanner.Hud.Services
                 isRecurring: signup.IsRecurring,
                 onSnooze: minutes => ScheduleSnooze(minutes, () => PostStartingToast(signup))));
         }
+
         public void PostGuildAnnouncementToast(Announcement ann)
         {
             var title = string.IsNullOrWhiteSpace(ann.GuildTag)
-                ? $"ðŸ“¢ {ann.GuildName}"
-                : $"ðŸ“¢ [{ann.GuildTag}] {ann.GuildName}";
+                ? $"📢 {ann.GuildName}"
+                : $"📢 [{ann.GuildTag}] {ann.GuildName}";
             var subtitle = string.IsNullOrWhiteSpace(ann.Title) ? "" : ann.Title;
             var body     = ann.Content ?? string.Empty;
             RecordAndChime(title, subtitle, "announcement", ann.Id);
+
             _stack.Push(new AnnouncementToast(_settings, title, subtitle, body));
         }
+
         public void PostNewGuildEventToast(NewGuildEvent ev)
         {
-            var title = $"New event Â· {Pretty(ev.Title, ev.Type)}";
+            var title = $"New event · {Pretty(ev.Title, ev.Type)}";
             var when = (ev.ScheduledAt - DateTime.UtcNow).TotalMinutes;
             var subtitle = ev.GuildName != null
-                ? $"{ev.GuildName} Â· in {FormatRelative(when)} Â· {Commander(ev)}"
-                : $"in {FormatRelative(when)} Â· {Commander(ev)}";
+                ? $"{ev.GuildName} · in {FormatRelative(when)} · {Commander(ev)}"
+                : $"in {FormatRelative(when)} · {Commander(ev)}";
             RecordAndChime(title, subtitle, ev.Type, ev.Id);
+
             _stack.Push(new EventToast(
                 settings: _settings,
                 title: title,
@@ -103,6 +115,9 @@ namespace TyriaPlanner.Hud.Services
                 isRecurring: ev.IsRecurring,
                 onSnooze: null));
         }
+
+        // Re-queues the toast after a snooze interval. Runs on a thread-pool
+        // timer that disposes itself after firing once · cheap and safe.
         private static void ScheduleSnooze(int minutes, Action repost)
         {
             if (minutes <= 0) { repost(); return; }
@@ -113,6 +128,7 @@ namespace TyriaPlanner.Hud.Services
                 t?.Dispose();
             }, null, TimeSpan.FromMinutes(minutes), System.Threading.Timeout.InfiniteTimeSpan);
         }
+
         private static string Pretty(string title, string type)
         {
             if (!string.IsNullOrWhiteSpace(title)) return title;
@@ -126,12 +142,14 @@ namespace TyriaPlanner.Hud.Services
                 default:          return type ?? "Event";
             }
         }
+
         private static string Commander(EventBase ev)
         {
             if (!string.IsNullOrWhiteSpace(ev.CommanderAccountName)) return ev.CommanderAccountName;
             if (!string.IsNullOrWhiteSpace(ev.CommanderDisplayName)) return ev.CommanderDisplayName;
             return ev.CommanderUsername ?? "?";
         }
+
         private static string FormatRelative(double minutes)
         {
             if (minutes < 1) return "now";
@@ -148,6 +166,7 @@ namespace TyriaPlanner.Hud.Services
             if (rh >= 24) { d += 1; rh = 0; }
             return rh > 0 ? $"{d}d {rh}h" : $"{d}d";
         }
+
         private static string BuildEventUrl(string id)
         {
             return $"https://tyriaplanner.com/event/{id}";

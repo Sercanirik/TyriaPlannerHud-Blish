@@ -1,36 +1,45 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Blish_HUD;
 using TyriaPlanner.Hud.Api;
 using TyriaPlanner.Hud.Settings;
+
 namespace TyriaPlanner.Hud.Services
 {
     public sealed class PollingService : IDisposable
     {
         private static readonly Logger Logger = Logger.GetLogger<PollingService>();
+
         private readonly ApiClient _api;
         private readonly ModuleSettings _settings;
         private readonly NotificationService _notify;
         private CancellationTokenSource _cancel;
         private Task _loop;
+
+        // Per-event dedup keys:
+        //   <eventId>|checkin   "Check-in time" toast
+        //   <eventId>|starting  "Event starting" toast
         private readonly HashSet<string> _shownReminders = new HashSet<string>();
         private readonly HashSet<string> _shownGuildEvents = new HashSet<string>();
         private readonly HashSet<string> _shownAnnouncements = new HashSet<string>();
         private DateTimeOffset? _lastSeen;
+
         public PollingService(ApiClient api, ModuleSettings settings, NotificationService notify)
         {
             _api = api;
             _settings = settings;
             _notify = notify;
         }
+
         public void Start()
         {
             Stop();
             _cancel = new CancellationTokenSource();
             _loop = Task.Run(() => RunAsync(_cancel.Token));
         }
+
         public void Stop()
         {
             if (_cancel != null)
@@ -41,6 +50,10 @@ namespace TyriaPlanner.Hud.Services
             }
             _loop = null;
         }
+
+        // Forces an out-of-cycle poll · called by the SSE subscriber when
+        // the server pushes a "refresh" event. Fire-and-forget so the
+        // subscriber's read loop isn't held up by the network call.
         public void RefreshNow()
         {
             if (_cancel == null) return;
@@ -52,6 +65,7 @@ namespace TyriaPlanner.Hud.Services
                 catch (Exception ex) { Logger.Warn(ex, "Stream-triggered refresh failed."); }
             });
         }
+
         private async Task RunAsync(CancellationToken cancel)
         {
             while (!cancel.IsCancellationRequested)
@@ -65,6 +79,7 @@ namespace TyriaPlanner.Hud.Services
                 {
                     Logger.Warn(ex, "Tyria Planner poll failed; will retry next cycle.");
                 }
+
                 var delaySeconds = Math.Max(30, _settings.PollIntervalSeconds.Value);
                 try
                 {
@@ -73,6 +88,7 @@ namespace TyriaPlanner.Hud.Services
                 catch (TaskCanceledException) { return; }
             }
         }
+
         private async Task PollOnceAsync(CancellationToken cancel)
         {
             var baseUrl = _settings.ApiBaseUrl.Value;
@@ -81,6 +97,7 @@ namespace TyriaPlanner.Hud.Services
             {
                 return;
             }
+
             var bearer = _settings.CachedBearer.Value;
             if (string.IsNullOrWhiteSpace(bearer))
             {
@@ -88,7 +105,9 @@ namespace TyriaPlanner.Hud.Services
                 if (string.IsNullOrWhiteSpace(bearer)) return;
                 _settings.CachedBearer.Value = bearer;
             }
+
             var resp = await _api.FetchUpcomingAsync(baseUrl, bearer, _lastSeen, cancel).ConfigureAwait(false);
+
             if (resp == null)
             {
                 _settings.CachedBearer.Value = string.Empty;
@@ -98,7 +117,9 @@ namespace TyriaPlanner.Hud.Services
                 resp = await _api.FetchUpcomingAsync(baseUrl, fresh, _lastSeen, cancel).ConfigureAwait(false);
                 if (resp == null) return;
             }
+
             _lastSeen = resp.ServerTime;
+
             if (_settings.NotifyOwnSignups.Value && resp.MySignups != null)
             {
                 foreach (var signup in resp.MySignups)
@@ -106,6 +127,7 @@ namespace TyriaPlanner.Hud.Services
                     HandleSignupTriggers(signup);
                 }
             }
+
             if (_settings.NotifyNewGuildEvents.Value && resp.NewGuildEvents != null)
             {
                 foreach (var ev in resp.NewGuildEvents)
@@ -116,6 +138,7 @@ namespace TyriaPlanner.Hud.Services
                     }
                 }
             }
+
             if (_settings.NotifyGuildAnnouncements.Value && resp.NewAnnouncements != null)
             {
                 foreach (var ann in resp.NewAnnouncements)
@@ -127,19 +150,29 @@ namespace TyriaPlanner.Hud.Services
                 }
             }
         }
+
         private void HandleSignupTriggers(MySignup signup)
         {
             var minutesUntil = (signup.ScheduledAt - DateTime.UtcNow).TotalMinutes;
+
+            // Starting · fires once when minutesUntil first drops to <=1.
+            // Two-minute lower bound makes sure a 45 s poll cycle never
+            // misses the crossing even if the previous tick was at 1.4 min.
             if (minutesUntil <= 1 && minutesUntil > -2)
             {
                 var key = signup.Id + "|starting";
                 if (_shownReminders.Add(key))
                 {
                     _notify.PostStartingToast(signup);
-                    Logger.Info("Starting toast Â· event={0} minutesUntil={1:0.#}", signup.Title, minutesUntil);
+                    Logger.Info("Starting toast · event={0} minutesUntil={1:0.#}", signup.Title, minutesUntil);
                 }
                 return;
             }
+
+            // Check-in · fires once when minutesUntil first drops below the
+            // event's configured checkinReminderMinutes. The server stores
+            // the per-event value (default 30 min); we honour it as-is so
+            // an officer-set custom window works automatically.
             var checkinAt = signup.CheckinReminderMinutes ?? 30;
             if (checkinAt > 0 && minutesUntil <= checkinAt && minutesUntil > 1)
             {
@@ -147,11 +180,12 @@ namespace TyriaPlanner.Hud.Services
                 if (_shownReminders.Add(key))
                 {
                     _notify.PostCheckinOpenToast(signup);
-                    Logger.Info("Check-in toast Â· event={0} minutesUntil={1:0.#} window={2}",
+                    Logger.Info("Check-in toast · event={0} minutesUntil={1:0.#} window={2}",
                         signup.Title, minutesUntil, checkinAt);
                 }
             }
         }
+
         public void Dispose()
         {
             Stop();

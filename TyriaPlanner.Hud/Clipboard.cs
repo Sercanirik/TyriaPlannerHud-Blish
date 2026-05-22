@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Blish_HUD;
+
 namespace TyriaPlanner.Hud.Ui
 {
     public static class Clipboard
@@ -27,6 +28,11 @@ namespace TyriaPlanner.Hud.Ui
                 Logger.GetLogger(typeof(Clipboard)).Warn(ex, "Clipboard write threw.");
             }
         }
+
+        // Sets `text` on the clipboard, then restores whatever was there
+        // before after `restoreAfter`. Used by command-copy buttons so we
+        // don't leave "/sqjoin Name" sitting in the user's clipboard once
+        // they've actually pasted it into chat.
         public static async Task SetAndRestoreAsync(string text, TimeSpan restoreAfter)
         {
             if (string.IsNullOrEmpty(text)) return;

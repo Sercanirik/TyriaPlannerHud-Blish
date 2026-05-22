@@ -1,20 +1,31 @@
-﻿using Blish_HUD.Controls;
+using Blish_HUD.Controls;
 using Microsoft.Xna.Framework;
 using TyriaPlanner.Hud.Settings;
+
 namespace TyriaPlanner.Hud.Ui
 {
+    // Toast variant for guild announcements from owners / officers. Shape
+    // mirrors EventToast (left accent stripe, title, subtitle, body) but
+    // there are no action buttons · per the user spec, clicking only
+    // dismisses. A gold accent makes it visually distinct from the per-type
+    // event colors used by EventToast.
     public sealed class AnnouncementToast : Container
     {
         public AnnouncementToast(ModuleSettings settings, string title, string subtitle, string body)
         {
             var titleFont = settings.TitleFont();
             var bodyFont  = settings.BodyFont();
+
             int titleH    = (int)titleFont.LineHeight;
             int bodyH     = (int)bodyFont.LineHeight;
+            // Body label gets up to three body lines · longer content just
+            // truncates rather than blowing the toast off-screen.
             int bodyBlock = bodyH * 3 + 4;
             int height    = 12 + titleH + 4 + bodyH + 6 + bodyBlock + 12;
+
             Height = height;
             BackgroundColor = new Color(14, 14, 18, 235);
+
             var accent = Color.Goldenrod;
             new Panel
             {
@@ -24,6 +35,7 @@ namespace TyriaPlanner.Hud.Ui
                 Width = 4,
                 Height = height,
             };
+
             new Label
             {
                 Parent = this,
@@ -35,6 +47,7 @@ namespace TyriaPlanner.Hud.Ui
                 Height = titleH + 4,
                 AutoSizeWidth = false,
             };
+
             var dismiss = new StandardButton
             {
                 Parent = this,
@@ -44,6 +57,7 @@ namespace TyriaPlanner.Hud.Ui
                 Location = new Point(348, 6),
             };
             dismiss.Click += (_, __) => Dispose();
+
             if (!string.IsNullOrWhiteSpace(subtitle))
             {
                 new Label
@@ -58,6 +72,7 @@ namespace TyriaPlanner.Hud.Ui
                     AutoSizeWidth = false,
                 };
             }
+
             new Label
             {
                 Parent = this,

@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using Blish_HUD;
+
 namespace TyriaPlanner.Hud.Ui
 {
     public static class SafeUrl
@@ -12,6 +13,7 @@ namespace TyriaPlanner.Hud.Ui
             var s = uri.Scheme.ToLowerInvariant();
             return s == "http" || s == "https" || s == "discord" || s == "mumble";
         }
+
         public static void Open(string url)
         {
             if (!IsAllowed(url))

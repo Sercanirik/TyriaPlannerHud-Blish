@@ -1,7 +1,9 @@
-﻿using System;
+using System;
 using Newtonsoft.Json;
+
 namespace TyriaPlanner.Hud.Api
 {
+    // Top-level response from GET /api/addon/upcoming
     public sealed class UpcomingResponse
     {
         [JsonProperty("mySignups")]        public MySignup[] MySignups { get; set; } = Array.Empty<MySignup>();
@@ -9,6 +11,7 @@ namespace TyriaPlanner.Hud.Api
         [JsonProperty("newAnnouncements")] public Announcement[] NewAnnouncements { get; set; } = Array.Empty<Announcement>();
         [JsonProperty("serverTime")]       public DateTime ServerTime { get; set; }
     }
+
     public sealed class Announcement
     {
         [JsonProperty("id")]                 public string Id { get; set; }
@@ -23,6 +26,8 @@ namespace TyriaPlanner.Hud.Api
         [JsonProperty("senderAccountName")]  public string SenderAccountName { get; set; }
         [JsonProperty("createdAt")]          public DateTime CreatedAt { get; set; }
     }
+
+    // Common shape · matched to the API's mapEvent() output.
     public abstract class EventBase
     {
         [JsonProperty("id")]                     public string Id { get; set; }
@@ -44,17 +49,20 @@ namespace TyriaPlanner.Hud.Api
         [JsonProperty("signupCount")]            public int SignupCount { get; set; }
         [JsonProperty("maxSignups")]             public int MaxSignups { get; set; }
     }
+
     public sealed class KpRequirement
     {
         [JsonProperty("amount")] public int Amount { get; set; }
         [JsonProperty("mode")]   public string Mode { get; set; }
     }
+
     public sealed class SignupCharacter
     {
         [JsonProperty("name")]       public string Name { get; set; }
         [JsonProperty("profession")] public string Profession { get; set; }
         [JsonProperty("eliteSpec")]  public string EliteSpec { get; set; }
     }
+
     public sealed class MySignup : EventBase
     {
         [JsonProperty("checkinReminderMinutes")] public int? CheckinReminderMinutes { get; set; }
@@ -63,6 +71,7 @@ namespace TyriaPlanner.Hud.Api
         [JsonProperty("isBench")]                public bool IsBench { get; set; }
         [JsonProperty("signupCharacter")]        public SignupCharacter SignupCharacter { get; set; }
     }
+
     public sealed class NewGuildEvent : EventBase
     {
         [JsonProperty("createdAt")] public DateTime CreatedAt { get; set; }
