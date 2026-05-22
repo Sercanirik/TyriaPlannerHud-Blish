@@ -1397,6 +1397,7 @@
   },
   "projectFileDependencyGroups": {
     "net48": [
+      "AsyncClipboardService >= 1.7.1",
       "BlishHUD >= 1.0.0",
       "Newtonsoft.Json >= 13.0.1",
       "System.ComponentModel.Composition >= 6.0.0"
@@ -1454,6 +1455,11 @@
         "framework": "net48",
         "targetAlias": "net48",
         "dependencies": {
+          "AsyncClipboardService": {
+            "include": "Compile, Build, Native, BuildTransitive",
+            "target": "Package",
+            "version": "[1.7.1, )"
+          },
           "BlishHUD": {
             "include": "Compile, Build, Native, BuildTransitive",
             "target": "Package",

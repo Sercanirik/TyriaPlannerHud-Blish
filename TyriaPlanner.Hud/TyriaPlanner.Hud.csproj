@@ -8,6 +8,11 @@
     <PackageReference Include="BlishHUD" Version="1.0.0" ExcludeAssets="runtime;contentFiles;analyzers" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" ExcludeAssets="runtime;contentFiles;analyzers" />
     <PackageReference Include="System.ComponentModel.Composition" Version="6.0.0" />
+    <!-- Transitive deps that SSRD's restore was failing to fetch ·
+         declaring them up front nudges the restore graph so they end
+         up in obj/project.assets.json even when SSRD only resolves
+         direct references. -->
+    <PackageReference Include="AsyncClipboardService" Version="1.7.1" ExcludeAssets="runtime;contentFiles;analyzers" />
   </ItemGroup>
 
   <ItemGroup>
