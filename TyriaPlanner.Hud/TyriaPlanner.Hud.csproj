@@ -34,17 +34,6 @@
     </None>
   </ItemGroup>
 
-  <!-- Some hosted build pipelines (notably SSRD) invoke `dotnet build`
-       without first running `dotnet restore`, so project.assets.json is
-       missing and NETSDK1004 fires. Fall back to an explicit restore as
-       a pre-build step when the assets file is absent. Local builds and
-       GitHub Actions already restore, so this target is a no-op there. -->
-  <Target Name="EnsureNuGetRestore"
-          BeforeTargets="CollectPackageReferences;_GenerateRestoreGraphProjectEntry;Build"
-          Condition="!Exists('$(BaseIntermediateOutputPath)project.assets.json')">
-    <Exec Command="dotnet restore &quot;$(MSBuildProjectFullPath)&quot;" />
-  </Target>
-
   <!-- BlishHUD's NuGet build targets auto-package the module into a .bhm
        (renamed zip) at bin/Release/<AssemblyName>.bhm after each Release
        build, so no custom packaging step is needed. -->
