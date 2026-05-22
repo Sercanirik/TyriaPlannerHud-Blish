@@ -2,15 +2,10 @@
 
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
-    <!-- Drop the net48 subfolder under bin/Release/ so the .bhm artifact
-         ends up at bin/Release/TyriaPlanner.Hud.bhm · matches the layout
-         SSRD's artifact discovery seems to expect. -->
-    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="BlishHUD" Version="1.2.0" ExcludeAssets="runtime;contentFiles;analyzers" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" ExcludeAssets="runtime;contentFiles;analyzers" />
     <PackageReference Include="System.ComponentModel.Composition" Version="6.0.0" />
   </ItemGroup>
 
