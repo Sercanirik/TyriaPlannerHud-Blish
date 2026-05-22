@@ -154,7 +154,7 @@
           }
         },
         "runtime": {
-          "lib/net45/Newtonsoft.Json.dll": {
+          "lib/net45/_._": {
             "related": ".xml"
           }
         }
@@ -320,9 +320,6 @@
       },
       "System.ComponentModel.Composition/6.0.0": {
         "type": "package",
-        "frameworkAssemblies": [
-          "System.ComponentModel.Composition"
-        ],
         "compile": {
           "lib/net461/_._": {}
         },
@@ -1407,7 +1404,7 @@
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
-    "version": "0.11.1",
+    "version": "0.11.2",
     "restore": {
       "projectUniqueName": "C:\\Users\\USER\\repos\\Tyria-Planner\\scratch\\TyriaPlannerHud-Blish\\TyriaPlanner.Hud\\TyriaPlanner.Hud.csproj",
       "projectName": "TyriaPlanner.Hud",
@@ -1460,10 +1457,12 @@
             "version": "[1.2.0, )"
           },
           "Newtonsoft.Json": {
+            "include": "Compile, Build, Native, ContentFiles, Analyzers, BuildTransitive",
             "target": "Package",
             "version": "[13.0.1, )"
           },
           "System.ComponentModel.Composition": {
+            "include": "Compile, Build, Native, ContentFiles, Analyzers, BuildTransitive",
             "target": "Package",
             "version": "[6.0.0, )"
           }
