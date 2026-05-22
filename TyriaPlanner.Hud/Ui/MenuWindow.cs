@@ -276,6 +276,18 @@ namespace TyriaPlanner.Hud.Ui
                     AddEventRow(ev, showSqjoin: false);
                 }
             }
+            AddSectionHeader($"Guild announcements (last 24h)  Â·  {resp.NewAnnouncements?.Length ?? 0}");
+            if (resp.NewAnnouncements == null || resp.NewAnnouncements.Length == 0)
+            {
+                AddEmptyRow("No recent guild announcements.");
+            }
+            else
+            {
+                foreach (var ann in resp.NewAnnouncements)
+                {
+                    AddAnnouncementRow(ann);
+                }
+            }
             var history = _history?.Snapshot();
             if (history != null && history.Count > 0)
             {
@@ -286,6 +298,76 @@ namespace TyriaPlanner.Hud.Ui
                 }
             }
             _statusLabel.Text = $"Updated Â· server time {resp.ServerTime:HH:mm:ss}";
+        }
+        private void AddAnnouncementRow(Announcement ann)
+        {
+            var titleFont = _settings.TitleFont();
+            var bodyFont  = _settings.BodyFont();
+            int titleH    = (int)titleFont.LineHeight;
+            int bodyH     = (int)bodyFont.LineHeight;
+            int bodyBlock = bodyH * 3 + 4;
+            int padTop    = 8;
+            int padMid    = 4;
+            int padBot    = 8;
+            int rowHeight = padTop + titleH + padMid + bodyH + padMid + bodyBlock + padBot;
+            var accent = Color.Goldenrod;
+            var row = new Panel
+            {
+                Parent = _content,
+                Width = _content.Width - 16,
+                Height = rowHeight,
+                BackgroundColor = new Color(22, 22, 26, 220),
+            };
+            new Panel
+            {
+                Parent = row,
+                BackgroundColor = accent,
+                Location = new Point(0, 0),
+                Width = 4,
+                Height = rowHeight,
+            };
+            var head = string.IsNullOrWhiteSpace(ann.GuildTag)
+                ? $"ðŸ“¢ {ann.GuildName}"
+                : $"ðŸ“¢ [{ann.GuildTag}] {ann.GuildName}";
+            new Label
+            {
+                Parent = row,
+                Text = head,
+                Font = titleFont,
+                TextColor = accent,
+                Location = new Point(12, padTop),
+                Width = row.Width - 22,
+                Height = titleH + 2,
+                AutoSizeWidth = false,
+            };
+            var senderAndTime = string.IsNullOrWhiteSpace(ann.SenderAccountName)
+                ? FormatAgo(ann.CreatedAt)
+                : $"{ann.SenderAccountName} Â· {FormatAgo(ann.CreatedAt)}";
+            new Label
+            {
+                Parent = row,
+                Text = string.IsNullOrWhiteSpace(ann.Title)
+                    ? senderAndTime
+                    : $"{ann.Title} Â· {senderAndTime}",
+                Font = bodyFont,
+                TextColor = new Color(220, 200, 140),
+                Location = new Point(12, padTop + titleH + padMid),
+                Width = row.Width - 22,
+                Height = bodyH + 2,
+                AutoSizeWidth = false,
+            };
+            new Label
+            {
+                Parent = row,
+                Text = string.IsNullOrWhiteSpace(ann.Content) ? "(no content)" : ann.Content,
+                Font = bodyFont,
+                TextColor = new Color(210, 210, 210),
+                Location = new Point(12, padTop + titleH + padMid + bodyH + padMid),
+                Width = row.Width - 22,
+                Height = bodyBlock,
+                AutoSizeWidth = false,
+                WrapText = true,
+            };
         }
         private void AddApprovalRow(PendingApproval p)
         {
