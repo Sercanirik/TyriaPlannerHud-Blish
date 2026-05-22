@@ -95,7 +95,7 @@ namespace TyriaPlanner.Hud.Ui
                 new Label
                 {
                     Parent = this,
-                    Text = "Sign up via the mobile app or website first",
+                    Text = "Sign up via the mobile app first",
                     Font = bodyFont,
                     TextColor = new Color(255, 200, 90),
                     Location = new Point(12, 14 + (int)titleFont.LineHeight + (int)bodyFont.LineHeight),

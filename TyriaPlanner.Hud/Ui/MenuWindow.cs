@@ -255,7 +255,7 @@ namespace TyriaPlanner.Hud.Ui
             AddSectionHeader($"My signups (next 7 days)  Â·  {resp.MySignups?.Length ?? 0}");
             if (resp.MySignups == null || resp.MySignups.Length == 0)
             {
-                AddEmptyRow("Nothing scheduled. Sign up to events on the website to see them here.");
+                AddEmptyRow("Nothing scheduled. Sign up to events on the mobile app to see them here.");
             }
             else
             {
