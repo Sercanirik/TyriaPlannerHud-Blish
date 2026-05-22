@@ -1,16 +1,22 @@
 {
-  "manifest_version": 1,
   "name": "Tyria Planner",
+  "version": "0.10.16",
   "namespace": "com.tyriaplanner.hud",
-  "description": "Shows in-game popups for your upcoming Tyria Planner signups and new guild events. Click to /sqjoin or /whisper the commander.",
-  "version": "0.10.15",
   "package": "TyriaPlanner.Hud.dll",
-  "url": "https://tyriaplanner.com",
-  "author": {
-    "name": "Tyria Planner",
-    "url": "https://tyriaplanner.com"
-  },
+  "manifest_version": 1,
+
+  "description": "Shows in-game popups for your upcoming Tyria Planner signups and new guild events. Click to /sqjoin or /whisper the commander.",
   "dependencies": {
-    "bh.blishhud": ">=1.0.0"
-  }
+    "bh.blishhud": ">=1.2.0"
+  },
+  "url": "https://tyriaplanner.com",
+  "contributors": [
+    {
+      "name": "Tyria Planner",
+      "username": "Sercanirik",
+      "url": "https://tyriaplanner.com"
+    }
+  ],
+
+  "enabled_without_gw2": false
 }
