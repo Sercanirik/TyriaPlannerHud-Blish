@@ -2,6 +2,10 @@
 
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
+    <!-- Drop the net48 subfolder under bin/Release/ so the .bhm artifact
+         ends up at bin/Release/TyriaPlanner.Hud.bhm · matches the layout
+         SSRD's artifact discovery seems to expect. -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
