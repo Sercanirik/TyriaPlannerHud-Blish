@@ -1,0 +1,12 @@
+C:\Users\USER\repos\Tyria-Planner\scratch\TyriaPlannerHud-Blish\TyriaPlanner.Hud\bin\Debug\net48\TyriaPlanner.Hud.dll
+C:\Users\USER\repos\Tyria-Planner\scratch\TyriaPlannerHud-Blish\TyriaPlanner.Hud\bin\Debug\net48\TyriaPlanner.Hud.pdb
+C:\Users\USER\repos\Tyria-Planner\scratch\TyriaPlannerHud-Blish\TyriaPlanner.Hud\bin\Debug\net48\Newtonsoft.Json.dll
+C:\Users\USER\repos\Tyria-Planner\scratch\TyriaPlannerHud-Blish\TyriaPlanner.Hud\obj\Debug\net48\TyriaPlanner.Hud.csproj.AssemblyReference.cache
+C:\Users\USER\repos\Tyria-Planner\scratch\TyriaPlannerHud-Blish\TyriaPlanner.Hud\obj\Debug\net48\TyriaPlanner.Hud.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\USER\repos\Tyria-Planner\scratch\TyriaPlannerHud-Blish\TyriaPlanner.Hud\obj\Debug\net48\TyriaPlanner.Hud.AssemblyInfoInputs.cache
+C:\Users\USER\repos\Tyria-Planner\scratch\TyriaPlannerHud-Blish\TyriaPlanner.Hud\obj\Debug\net48\TyriaPlanner.Hud.AssemblyInfo.cs
+C:\Users\USER\repos\Tyria-Planner\scratch\TyriaPlannerHud-Blish\TyriaPlanner.Hud\obj\Debug\net48\TyriaPlanner.Hud.csproj.CoreCompileInputs.cache
+C:\Users\USER\repos\Tyria-Planner\scratch\TyriaPlannerHud-Blish\TyriaPlanner.Hud\obj\Debug\net48\TyriaPlanner.Hud.sourcelink.json
+C:\Users\USER\repos\Tyria-Planner\scratch\TyriaPlannerHud-Blish\TyriaPlanner.Hud\obj\Debug\net48\TyriaPla.F34ECA84.Up2Date
+C:\Users\USER\repos\Tyria-Planner\scratch\TyriaPlannerHud-Blish\TyriaPlanner.Hud\obj\Debug\net48\TyriaPlanner.Hud.dll
+C:\Users\USER\repos\Tyria-Planner\scratch\TyriaPlannerHud-Blish\TyriaPlanner.Hud\obj\Debug\net48\TyriaPlanner.Hud.pdb
