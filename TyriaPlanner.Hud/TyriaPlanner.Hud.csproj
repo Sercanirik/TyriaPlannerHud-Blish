@@ -2,52 +2,16 @@
 
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
-    <LangVersion>latest</LangVersion>
-    <RootNamespace>TyriaPlanner.Hud</RootNamespace>
-    <AssemblyName>TyriaPlanner.Hud</AssemblyName>
-    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Official Blish HUD NuGet package · pulls in MonoGame.Framework
-         transitively. ExcludeAssets="runtime;contentFiles;analyzers" keeps
-         the host runtime DLLs out of our build output and silences the
-         analyzer warning the BlishHUD package would otherwise add. -->
     <PackageReference Include="BlishHUD" Version="1.0.0" ExcludeAssets="runtime;contentFiles;analyzers" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-    <!-- MEF lives in System.ComponentModel.Composition · keep the NuGet
-         version (not the framework reference) so the SSRD build env on
-         the Blish HUD side doesn't need the .NET Framework targeting pack
-         installed. -->
-    <PackageReference Include="System.ComponentModel.Composition" Version="7.0.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" ExcludeAssets="runtime;contentFiles;analyzers" />
+    <PackageReference Include="System.ComponentModel.Composition" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- HttpClient lives in System.Net.Http on the .NET Framework target.
-         Required for our ApiClient. -->
     <Reference Include="System.Net.Http" />
   </ItemGroup>
-
-  <ItemGroup>
-    <None Include="manifest.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
-  <!-- BlishHUD's NuGet build targets auto-package the module into a .bhm
-       (renamed zip) at bin/Release/<AssemblyName>.bhm after each Release
-       build, so no custom packaging step is needed. -->
-
-  <!-- Mirror the freshly built .bhm into ../releases so the user has a
-       stable, shallow path to grab the latest build from. Skips silently
-       when ../releases doesn't exist (e.g. when SSRD builds the module
-       from a sparse checkout that does not include the parent folder). -->
-  <Target Name="CopyToReleases" AfterTargets="BuildBlishHUDModule"
-          Condition="'$(Configuration)' == 'Release' AND Exists('$(MSBuildProjectDirectory)\..\releases')">
-    <Copy SourceFiles="$(OutputPath)$(AssemblyName).bhm"
-          DestinationFolder="$(MSBuildProjectDirectory)\..\releases\"
-          ContinueOnError="true"
-          SkipUnchangedFiles="false" />
-  </Target>
 
 </Project>

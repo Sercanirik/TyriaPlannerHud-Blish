@@ -154,7 +154,7 @@
           }
         },
         "runtime": {
-          "lib/net45/Newtonsoft.Json.dll": {
+          "lib/net45/_._": {
             "related": ".xml"
           }
         }
@@ -318,16 +318,16 @@
           }
         }
       },
-      "System.ComponentModel.Composition/7.0.0": {
+      "System.ComponentModel.Composition/6.0.0": {
         "type": "package",
         "frameworkAssemblies": [
           "System.ComponentModel.Composition"
         ],
         "compile": {
-          "lib/net462/_._": {}
+          "lib/net461/_._": {}
         },
         "runtime": {
-          "lib/net462/_._": {}
+          "lib/net461/_._": {}
         }
       },
       "System.Memory/4.5.4": {
@@ -1055,26 +1055,26 @@
         "version.txt"
       ]
     },
-    "System.ComponentModel.Composition/7.0.0": {
-      "sha512": "orv0h38ZVPCPo/FW0LGv8/TigXwX8cIwXeQcaNYhikkqELDm8sUFLMcof/Sjcq5EvYCm5NA7MV3hG4u75H44UQ==",
+    "System.ComponentModel.Composition/6.0.0": {
+      "sha512": "60Qv+F7oxomOjJeTDA5Z4iCyFbQ0B/2Mi5HT+13pxxq0lVnu2ipbWMzFB+RWKr3wWKA8BSncXr9PH/fECwMX5Q==",
       "type": "package",
-      "path": "system.componentmodel.composition/7.0.0",
+      "path": "system.componentmodel.composition/6.0.0",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "Icon.png",
         "LICENSE.TXT",
         "THIRD-PARTY-NOTICES.TXT",
-        "buildTransitive/net6.0/_._",
         "buildTransitive/netcoreapp2.0/System.ComponentModel.Composition.targets",
-        "lib/net462/_._",
+        "buildTransitive/netcoreapp3.1/_._",
+        "lib/net461/_._",
         "lib/net6.0/System.ComponentModel.Composition.dll",
         "lib/net6.0/System.ComponentModel.Composition.xml",
-        "lib/net7.0/System.ComponentModel.Composition.dll",
-        "lib/net7.0/System.ComponentModel.Composition.xml",
+        "lib/netcoreapp3.1/System.ComponentModel.Composition.dll",
+        "lib/netcoreapp3.1/System.ComponentModel.Composition.xml",
         "lib/netstandard2.0/System.ComponentModel.Composition.dll",
         "lib/netstandard2.0/System.ComponentModel.Composition.xml",
-        "system.componentmodel.composition.7.0.0.nupkg.sha512",
+        "system.componentmodel.composition.6.0.0.nupkg.sha512",
         "system.componentmodel.composition.nuspec",
         "useSharedDesignerContext.txt"
       ]
@@ -1399,7 +1399,7 @@
     "net48": [
       "BlishHUD >= 1.0.0",
       "Newtonsoft.Json >= 13.0.1",
-      "System.ComponentModel.Composition >= 7.0.0"
+      "System.ComponentModel.Composition >= 6.0.0"
     ]
   },
   "packageFolders": {
@@ -1460,12 +1460,13 @@
             "version": "[1.0.0, )"
           },
           "Newtonsoft.Json": {
+            "include": "Compile, Build, Native, BuildTransitive",
             "target": "Package",
             "version": "[13.0.1, )"
           },
           "System.ComponentModel.Composition": {
             "target": "Package",
-            "version": "[7.0.0, )"
+            "version": "[6.0.0, )"
           }
         },
         "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.300\\RuntimeIdentifierGraph.json"

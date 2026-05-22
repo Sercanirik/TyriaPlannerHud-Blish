@@ -20,21 +20,26 @@ jobs:
           dotnet-version: '8.0.x'
       - run: dotnet restore TyriaPlanner.Hud/TyriaPlanner.Hud.csproj
       - run: dotnet build TyriaPlanner.Hud/TyriaPlanner.Hud.csproj -c Release --no-restore
-      - name: Rename .bhm with namespace and version
+      - name: Locate + rename .bhm with namespace and version
         shell: pwsh
         run: |
           $manifest = Get-Content "TyriaPlanner.Hud/manifest.json" | ConvertFrom-Json
-          $name = "$($manifest.namespace)-$($manifest.version).bhm"
-          Copy-Item "TyriaPlanner.Hud/bin/Release/TyriaPlanner.Hud.bhm" "TyriaPlanner.Hud/bin/Release/$name"
-          Write-Host "Built: $name"
+          $bhm = Get-ChildItem -Recurse -Path "TyriaPlanner.Hud/bin/Release" -Filter "TyriaPlanner.Hud.bhm" | Select-Object -First 1
+          if (-not $bhm) { throw "no .bhm artifact found" }
+          $versioned = Join-Path $bhm.DirectoryName "$($manifest.namespace)-$($manifest.version).bhm"
+          Copy-Item $bhm.FullName $versioned
+          Write-Host "Built: $($bhm.FullName)"
+          Write-Host "Versioned: $versioned"
+          "BHM_PATH=$($bhm.FullName)"   | Out-File -Append -FilePath $env:GITHUB_ENV
+          "BHM_VERSIONED=$versioned"    | Out-File -Append -FilePath $env:GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with:
           name: TyriaPlanner.Hud
-          path: TyriaPlanner.Hud/bin/Release/*.bhm
+          path: TyriaPlanner.Hud/bin/Release/**/*.bhm
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            TyriaPlanner.Hud/bin/Release/TyriaPlanner.Hud.bhm
-            TyriaPlanner.Hud/bin/Release/com.tyriaplanner.hud-*.bhm
+            ${{ env.BHM_PATH }}
+            ${{ env.BHM_VERSIONED }}
