@@ -1,0 +1,8 @@
+is_global = true
+build_property.RootNamespace = TyriaPlanner.Hud
+build_property.ProjectDir = C:\Users\USER\repos\Tyria-Planner\scratch\TyriaPlannerHud-Blish\TyriaPlanner.Hud\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.CsWinRTUseWindowsUIXamlProjections = false
+build_property.EffectiveAnalysisLevelStyle = 
+build_property.EnableCodeStyleSeverity = 
