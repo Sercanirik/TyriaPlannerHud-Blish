@@ -1,6 +1,6 @@
 {
   "name": "Tyria Planner",
-  "version": "0.10.18",
+  "version": "0.10.19",
   "namespace": "com.tyriaplanner.hud",
   "package": "TyriaPlanner.Hud.dll",
   "manifest_version": 1,
