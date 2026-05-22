@@ -13,7 +13,7 @@
          transitively. ExcludeAssets="runtime;contentFiles;analyzers" keeps
          the host runtime DLLs out of our build output and silences the
          analyzer warning the BlishHUD package would otherwise add. -->
-    <PackageReference Include="BlishHUD" Version="1.3.0" ExcludeAssets="runtime;contentFiles;analyzers" />
+    <PackageReference Include="BlishHUD" Version="1.0.0" ExcludeAssets="runtime;contentFiles;analyzers" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <!-- MEF lives in System.ComponentModel.Composition · keep the NuGet
          version (not the framework reference) so the SSRD build env on
