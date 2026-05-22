@@ -7,7 +7,7 @@
   <ItemGroup>
     <PackageReference Include="BlishHUD" Version="1.0.0" ExcludeAssets="runtime;contentFiles;analyzers" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-    <PackageReference Include="System.ComponentModel.Composition" Version="7.0.0" />
+    <PackageReference Include="System.ComponentModel.Composition" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>
